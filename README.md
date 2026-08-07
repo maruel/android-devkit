@@ -1,8 +1,8 @@
 # Pico i.MX7 Ubuntu 22.04 Wi-Fi and camera modules
 
 This repository builds and packages seven modules for the inspected TechNexion
-Pico i.MX7 Ubuntu 22.04 image (kernel `5.15.71`): QCA ath10k Wi-Fi and MIPI
-OV5640 camera support. It includes a validated prebuilt set in
+Pico i.MX7 Ubuntu 22.04 image (kernel `5.15.71`): QCA9377 ath10k SDIO Wi-Fi
+and MIPI OV5640 camera support. It includes a validated prebuilt set in
 [`prebuilt/pico-imx7/ubuntu-22.04-5.15.71`](prebuilt/pico-imx7/ubuntu-22.04-5.15.71),
 but you can rebuild it from source.
 
@@ -23,12 +23,13 @@ sudo apt install --no-install-recommends kmod libguestfs-tools
 ./make-image.sh
 ```
 
-This uses the tracked prebuilt modules and writes the new image and provenance
-record under `artifacts/ubuntu-22.04/`. It prompts for your `sudo` password
-for `guestfish`, plus a controlled ownership handoff of its temporary archive.
-`guestfish` needs to read the host kernel while starting its private helper VM.
-The script does not modify `/boot`; the downloaded base image and new output
-remain handled as your normal user.
+This fetches pinned QCA9377 SDIO firmware, uses the tracked prebuilt modules,
+and writes the new image and provenance record under `artifacts/ubuntu-22.04/`.
+It tries `guestfish` without privilege first. If the host kernel is unreadable
+to its helper VM, it requests your `sudo` password, retries with elevation, and
+hands ownership of its temporary archives back to you. The script does not
+modify `/boot`; the downloaded base image and new output remain handled as your
+normal user.
 
 ## Rebuild the modules
 
@@ -84,7 +85,7 @@ These are **four 3-pin jumper caps**, not the expansion-header pins or other
 switches. Use [Figure 19 of the PICO-PI-IMX7 hardware manual](https://www.nxp.com/docs/en/user-guide/PICO-IMX7UL-USG.pdf#page=18)
 as the physical reference: with the 40-pin expansion header along the top of
 the photo, the 2×2 boot-control cluster is directly **below** it and to the
-right of the AP6335 Wi-Fi module. The manual's **right-hand** photo is the
+right of the Wi-Fi module. The manual's **right-hand** photo is the
 required Serial Boot Loader (USB download) configuration; its **left-hand**
 photo is normal eMMC boot. Match the four caps to the photograph exactly.
 

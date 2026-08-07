@@ -65,7 +65,12 @@ derived file: it is not byte-identical to the image configuration.
 
 ## Constrained module rebuild
 
-For the selected QCA and MIPI OV5640 components, use the concrete builder only
+The inspected image's `/boot/uEnv.txt` selects `wifi_module=qca`, and its boot
+partition loads `imx7d-pico-pi-qca.dtb`. That device tree configures the radio
+on `usdhc2` as a non-removable SDIO device. The extracted config incorrectly
+enables `ath10k_pci` and disables `ath10k_sdio`; the derived build config fixes
+only that transport selection. For the selected QCA9377 SDIO and MIPI OV5640
+components, use the concrete builder only
 with a local Git repository that contains TechNexion `linux-tn-imx` commit
 `9339d9595f0d5192cf154b6fe6b98f43e8226fe8` and the derived configuration:
 
@@ -85,7 +90,7 @@ It rejects the result unless all
 seven ARM modules are non-empty and their literal `.modinfo` vermagic matches
 the inspected image:
 
-- `ath.ko`, `ath10k_core.ko`, and `ath10k_pci.ko`;
+- `ath.ko`, `ath10k_core.ko`, and `ath10k_sdio.ko`;
 - `mxc_v4l2_capture.ko`, `v4l2-int-device.ko`, `mxc_mipi_csi.ko`, and
   `ov5640_camera_mipi_v2.ko`.
 
@@ -104,14 +109,18 @@ without modifying the downloaded base image:
 scripts/create-pico-imx7-ubuntu-image.sh \
   --base-image /absolute/path/to/ubuntu-22.04.raw \
   --module-build /absolute/path/to/validated-module-build \
+  --firmware-dir /absolute/path/to/qca9377-firmware \
   --output-image /absolute/path/to/new-pico-imx7-ubuntu.raw
 ```
 
 The helper verifies the exact inspected base-image checksum, expected two
-partition layout, module build identity, ARM ELF type, and literal vermagic.
-It copies the base image, replaces only the seven existing Wi-Fi/camera module
-paths in the ext4 root filesystem, runs `depmod` against a private extracted
-module tree, and verifies each copied module from the resulting image. It
+partition layout, module build identity, ARM ELF type, literal vermagic, and
+the pinned upstream QCA9377 firmware hashes. It copies the base image, replaces
+the seven Wi-Fi/camera modules, adds `ath10k_sdio.ko`, and installs
+`board-2.bin`, its `board.bin` fallback, and `firmware-sdio-5.bin` under the
+paths requested by the selected driver. It runs `depmod` against a private
+extracted module tree and verifies every copied module and firmware file from
+the resulting image. It
 writes a sibling `.provenance` record and refuses to overwrite either output.
 Use the existing `flash-bundle.sh` only when separately validated SPL, U-Boot,
 and UUU assets are available; this raw image is ready for a reviewed SD-card
@@ -134,15 +143,14 @@ successful write is not a boot or hardware-function test.
 
 ## Wi-Fi module evidence
 
-The notes record building `drivers/net/wireless/broadcom/brcm80211` after
-enabling `brcmfmac` as a module, and copying `brcmfmac.ko` and `brcmutil.ko` to
-the target followed by `depmod` and `modprobe`. They also record an HT-clock
-timeout, so this is not proof of a working driver. [Ubuntu source note](../source-notes/UBUNTU.md)
-
-The note links AP6335 firmware and a Buildroot NVRAM file, but it does not
-establish the correct firmware/NVRAM filenames for the selected hardware.
-Resolve that from the selected device tree, driver logs, and image before
-installing firmware. [Ubuntu source note](../source-notes/UBUNTU.md)
+The selected image is the QCA variant, not the AP6335/Broadcom path described
+in some raw notes. Its QCA9377 radio is on SDIO, so `ath10k_sdio.ko` is the
+matching module; `ath10k_pci.ko` cannot bind it. The selected vendor kernel
+requests `ath10k/QCA9377/hw1.0/board-2.bin`, falling back to `board.bin` when
+needed, plus `firmware-sdio-5.bin`; `fetch-qca9377-firmware.sh` retrieves exact,
+hash-pinned copies from the upstream linux-firmware repository. A successful
+image build proves installed file identities, not radio operation; confirm hardware startup
+with `dmesg` and `ip link` after flashing.
 
 ## Camera evidence
 

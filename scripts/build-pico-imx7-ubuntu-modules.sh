@@ -2,7 +2,7 @@
 set -euo pipefail
 
 readonly KERNEL_COMMIT='9339d9595f0d5192cf154b6fe6b98f43e8226fe8'
-readonly PREPARED_CONFIG_SHA256='614e375075b3abd70dbf3461e12d878531d81a713899ff5923dca416465d445c'
+readonly PREPARED_CONFIG_SHA256='644090a71b5dbc975720d6e4fbdb391b9e8869064ac6fd6689a64c12965093dc'
 readonly TARGET_RELEASE='5.15.71'
 # The literal .modinfo value ends in one space; the image modules carry that
 # same byte after the ARM architecture vermagic fragment.
@@ -128,7 +128,7 @@ kernelrelease="$("${build_environment[@]}" "${make_command[@]}" -s kernelrelease
 declare -a module_paths=(
   'drivers/net/wireless/ath/ath.ko'
   'drivers/net/wireless/ath/ath10k/ath10k_core.ko'
-  'drivers/net/wireless/ath/ath10k/ath10k_pci.ko'
+  'drivers/net/wireless/ath/ath10k/ath10k_sdio.ko'
   'drivers/media/platform/mxc/capture/mxc_v4l2_capture.ko'
   'drivers/media/platform/mxc/capture/v4l2-int-device.ko'
   'drivers/media/platform/mxc/capture/mxc_mipi_csi.ko'

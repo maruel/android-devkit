@@ -21,7 +21,7 @@ extraction. It was produced by `olddefconfig` from the authoritative file in a
 Git-free archive of TechNexion `linux-tn-imx` commit
 `9339d9595f0d5192cf154b6fe6b98f43e8226fe8`:
 
-- SHA-256: `614e375075b3abd70dbf3461e12d878531d81a713899ff5923dca416465d445c`
+- SHA-256: `644090a71b5dbc975720d6e4fbdb391b9e8869064ac6fd6689a64c12965093dc`
 - Source-alignment evidence:
   `artifacts/ubuntu-22.04/source-alignment-9339d959-report.txt` in the
   evidence workspace.
@@ -29,12 +29,18 @@ Git-free archive of TechNexion `linux-tn-imx` commit
   `af4b4f3be385277f8d6f24e05c776d9339f0a556`.
 
 Compared with the authoritative image configuration, the derived configuration
-updates compiler-version fields for the available GCC 14 toolchain and adds
+changes the selected QCA9377 transport from the image's unusable PCI module to
+the matching SDIO module (`CONFIG_ATH10K_SDIO=m`,
+`CONFIG_ATH10K_PCI` disabled), carries the Kconfig compiler-version baseline,
+and adds
 Kconfig defaults/capability values, including `CONFIG_VIDEO_TEVS=y`,
 `CONFIG_CC_HAS_ASM_GOTO_OUTPUT=y`, auto-variable-initialization capability
 flags, zero-call-used-register capability flags, and
 `CONFIG_HAVE_KCSAN_COMPILER=y`. `CONFIG_VIDEO_TEVS` is present with `default y`
 in that vendor source's `drivers/media/i2c/Kconfig`.
+
+The build script runs `olddefconfig` with its pinned GCC 12 cross-compiler, so
+the resulting build configuration records that compiler's actual version.
 
 The expected visible image module vermagic is
 `5.15.71 SMP preempt mod_unload modversions ARMv7 p2v8`. The literal raw
