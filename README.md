@@ -90,15 +90,19 @@ photo is normal eMMC boot. Match the four caps to the photograph exactly.
 
 Direct links: [boot-control photograph (Figure 19, page 18)](https://www.nxp.com/docs/en/user-guide/PICO-IMX7UL-USG.pdf#page=18) · [full PICO-PI-IMX7 hardware manual](https://www.nxp.com/docs/en/user-guide/PICO-IMX7UL-USG.pdf).
 
-Keep Figure 19 in the same orientation—40-pin header at the top and AP6335 at
-the lower left—when using this compact transcription. `**-` bridges the two
-pins on the left of one three-pin jumper; `-**` bridges the two on the right.
+`**-` bridges the two pins on the left of one three-pin jumper; `-**` bridges the two on the right.
 
 ```text
 Serial Boot Loader (USB):       Normal eMMC boot:
 top row:     -**  **-           top row:     **-  -**
 bottom row:  -**  **-           bottom row:  **-  **-
 ```
+
+eMMC mode (normal)
+![emmc](images/boot_emmc_normal.png)
+
+USB boot (flash)
+[!usb](images/boot_usb_flash.png)
 
 Power the board off before moving the caps. Use the USB-C OTG/power connector
 for the host data cable; the micro-USB connector is the serial-console
