@@ -99,10 +99,10 @@ bottom row:  -**  **-           bottom row:  **-  **-
 ```
 
 eMMC mode (normal)
-![emmc](docs/boot_emmc_normal.png)
+![emmc](docs/boot_emmc_normal.jpg)
 
 USB boot (flash)
-[!usb](docs/boot_usb_flash.png)
+![usb](docs/boot_usb_flash.jpg)
 
 Power the board off before moving the caps. Use the USB-C OTG/power connector
 for the host data cable; the micro-USB connector is the serial-console
