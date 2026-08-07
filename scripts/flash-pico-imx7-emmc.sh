@@ -5,8 +5,7 @@ readonly EXPECTED_DEVICE='imx7d-sdp-15a2:0076'
 
 usage() {
   printf '%s\n' \
-    'usage: flash-pico-imx7-emmc.sh --image /absolute/path/to/image.raw --spl /absolute/path/to/imx7-SPL --u-boot /absolute/path/to/imx7-u-boot.img [--uuu /absolute/path/to/uuu] [--flash' \
-    '  --confirm-image FLASH_IMAGE_SHA256=... --confirm-device FLASH_DEVICE=imx7d-sdp-15a2:0076]' >&2
+    'usage: flash-pico-imx7-emmc.sh --image /absolute/path/to/image.raw --spl /absolute/path/to/imx7-SPL --u-boot /absolute/path/to/imx7-u-boot.img [--uuu /absolute/path/to/uuu] [--flash]' >&2
   exit 2
 }
 
@@ -36,19 +35,15 @@ spl=''
 u_boot=''
 uuu='uuu'
 flash=false
-confirm_image=''
-confirm_device=''
 while (($# > 0)); do
   case "$1" in
-    --image|--spl|--u-boot|--uuu|--confirm-image|--confirm-device)
+    --image|--spl|--u-boot|--uuu)
       (($# >= 2)) || usage
       case "$1" in
         --image) image="$2" ;;
         --spl) spl="$2" ;;
         --u-boot) u_boot="$2" ;;
         --uuu) uuu="$2" ;;
-        --confirm-image) confirm_image="$2" ;;
-        --confirm-device) confirm_device="$2" ;;
       esac
       shift 2
       ;;
@@ -109,8 +104,6 @@ if ((EUID != 0)); then
   sudo -v
 fi
 discover_device
-required_image_confirmation="FLASH_IMAGE_SHA256=$image_sha"
-required_device_confirmation="FLASH_DEVICE=$EXPECTED_DEVICE"
 if [[ "$flash" != true ]]; then
   printf 'dry run only; eMMC will not be written.\n'
   printf 'image=%s sha256=%s\n' "$image" "$image_sha"
@@ -118,14 +111,19 @@ if [[ "$flash" != true ]]; then
   printf 'u_boot=%s sha256=%s\n' "$u_boot" "$(sha256_file "$u_boot")"
   printf 'USB device=%s\n' "$EXPECTED_DEVICE"
   printf 'resolved UUU command: %s -b emmc_imx7_img %s %s %s\n' "$uuu_path" "$spl" "$u_boot" "$image"
-  printf 'to flash, add --flash --confirm-image %s --confirm-device %s\n' \
-    "$required_image_confirmation" "$required_device_confirmation"
+  printf 'to flash, rerun with --flash and approve the prompt\n'
   exit 0
 fi
-[[ "$confirm_image" == "$required_image_confirmation" ]] ||
-  fail 'image confirmation does not match the verified image'
-[[ "$confirm_device" == "$required_device_confirmation" ]] ||
-  fail 'device confirmation does not match the expected USB-boot Pico i.MX7'
+[[ -t 0 && -t 1 ]] || fail '--flash requires an interactive terminal'
+printf 'erase and write the verified image to Pico i.MX7 eMMC? [Y/n] '
+IFS= read -r confirmation || fail 'could not read flash confirmation'
+case "$confirmation" in
+  ''|y|Y|yes|YES) ;;
+  *)
+    printf 'flash cancelled; eMMC was not written.\n'
+    exit 0
+    ;;
+esac
 discover_device
 printf 'flashing verified image to Pico i.MX7 eMMC using UUU. Do not disconnect power or USB.\n'
 run_uuu -b emmc_imx7_img "$spl" "$u_boot" "$image"

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  printf '%s\n' 'usage: flash-emmc.sh [--spl /absolute/path/to/imx7-SPL --u-boot /absolute/path/to/imx7-u-boot.img] [--image-name name.raw] [--uuu /absolute/path/to/uuu] [--flash --confirm-image FLASH_IMAGE_SHA256=... --confirm-device FLASH_DEVICE=imx7d-sdp-15a2:0076]' >&2
+  printf '%s\n' 'usage: flash-emmc.sh [--spl /absolute/path/to/imx7-SPL --u-boot /absolute/path/to/imx7-u-boot.img] [--image-name name.raw] [--uuu /absolute/path/to/uuu] [--flash]' >&2
   exit 2
 }
 
@@ -18,11 +18,6 @@ while (($# > 0)); do
     --uuu) (($# >= 2)) || usage; uuu="$2"; shift 2 ;;
     --image-name) (($# >= 2)) || usage; image_name="$2"; shift 2 ;;
     --flash) flash_arguments+=(--flash); shift ;;
-    --confirm-image|--confirm-device)
-      (($# >= 2)) || usage
-      flash_arguments+=("$1" "$2")
-      shift 2
-      ;;
     --help) usage ;;
     *) usage ;;
   esac

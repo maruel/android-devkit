@@ -78,9 +78,35 @@ sudo apt install --no-install-recommends curl unzip
 ./flash-emmc.sh
 ```
 
-It prints two required confirmations. Repeat the command with `--flash` and
-those exact values to erase and write eMMC. The fetched files live under the
-ignored `artifacts/uuu-assets/pico-imx7/`; you can override them with
+### PICO-PI-IMX7 boot-jumper positions
+
+These are **four 3-pin jumper caps**, not the expansion-header pins or other
+switches. Use [Figure 19 of the PICO-PI-IMX7 hardware manual](https://www.nxp.com/docs/en/user-guide/PICO-IMX7UL-USG.pdf#page=18)
+as the physical reference: with the 40-pin expansion header along the top of
+the photo, the 2×2 boot-control cluster is directly **below** it and to the
+right of the AP6335 Wi-Fi module. The manual's **right-hand** photo is the
+required Serial Boot Loader (USB download) configuration; its **left-hand**
+photo is normal eMMC boot. Match the four caps to the photograph exactly.
+
+Direct links: [boot-control photograph (Figure 19, page 18)](https://www.nxp.com/docs/en/user-guide/PICO-IMX7UL-USG.pdf#page=18) · [full PICO-PI-IMX7 hardware manual](https://www.nxp.com/docs/en/user-guide/PICO-IMX7UL-USG.pdf).
+
+Keep Figure 19 in the same orientation—40-pin header at the top and AP6335 at
+the lower left—when using this compact transcription. `**-` bridges the two
+pins on the left of one three-pin jumper; `-**` bridges the two on the right.
+
+```text
+Serial Boot Loader (USB):       Normal eMMC boot:
+top row:     -**  **-           top row:     **-  -**
+bottom row:  -**  **-           bottom row:  **-  **-
+```
+
+Power the board off before moving the caps. Use the USB-C OTG/power connector
+for the host data cable; the micro-USB connector is the serial-console
+interface. Before flashing, `lsusb -d 15a2:0076` must show one device.
+
+To erase and write eMMC, run `./flash-emmc.sh --flash` and approve its `[Y/n]`
+prompt. The fetched files live under the ignored `artifacts/uuu-assets/pico-imx7/`;
+you can override them with
 `--spl`, `--u-boot`, and `--uuu` only when you have separately validated
 compatibility. After UUU completes, return the DIP switches to normal eMMC
 boot before restarting.
