@@ -8,7 +8,10 @@ readonly TARGET_RELEASE='5.15.71'
 # same byte after the ARM architecture vermagic fragment.
 readonly TARGET_VERMAGIC='5.15.71 SMP preempt mod_unload modversions ARMv7 p2v8 '
 readonly CROSS_COMPILE='arm-linux-gnueabi-'
-readonly CROSS_GCC='/usr/bin/arm-linux-gnueabi-gcc-14'
+# This vendor 5.15 tree cannot complete a GCC 14 build: libahci's
+# array_index_nospec() trips its compile-time assertion. GCC 12 is the pinned,
+# compatible compiler for the reproducible module build below.
+readonly CROSS_GCC='/usr/bin/arm-linux-gnueabi-gcc-12'
 
 usage() {
   printf '%s\n' 'usage: build-pico-imx7-ubuntu-modules.sh --source-checkout /absolute/path/to/linux-tn-imx --prepared-config /absolute/path/to/ubuntu-22.04-5.15.71-prepared.config --output-dir /absolute/path/to/new-output-directory' >&2
@@ -39,7 +42,7 @@ sha256_file() {
 
 module_vermagic() {
   local module="$1" values count
-  values="$(LC_ALL=C strings -a -- "$module" | awk -F= '$1 == "vermagic" { print substr($0, 9) }')"
+  values="$(LC_ALL=C strings -a -- "$module" | awk -F= '$1 == "vermagic" { print substr($0, 10) }')"
   count="$(printf '%s\n' "$values" | sed '/^$/d' | wc -l)"
   [[ "$count" == 1 ]] || fail "module must contain exactly one vermagic value: $module"
   printf '%s\n' "$values"

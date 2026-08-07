@@ -77,9 +77,11 @@ scripts/build-pico-imx7-ubuntu-modules.sh \
 ```
 
 The command creates a Git-free source archive under its new output directory,
-uses `/usr/bin/arm-linux-gnueabi-gcc-14`, performs a full kernel build to obtain
+uses `/usr/bin/arm-linux-gnueabi-gcc-12`, performs a full kernel build to obtain
 `Module.symvers`, then rebuilds only the required Wi-Fi and camera directories.
-It publishes no image and installs nothing. It rejects the result unless all
+GCC 14 cannot complete this vendor kernel's `libahci` compilation, so it is not
+a compatible substitute. The command publishes no image and installs nothing.
+It rejects the result unless all
 seven ARM modules are non-empty and their literal `.modinfo` vermagic matches
 the inspected image:
 
@@ -92,6 +94,43 @@ The expected visible vermagic is
 has one final spacer after `p2v8`, which the helper compares as well. A passing
 vermagic check alone does not authorize image replacement: compare modversion
 CRCs with the image module metadata when that metadata is available.
+
+## Create the flash image
+
+After a successful constrained module rebuild, create a new SD-card raw image
+without modifying the downloaded base image:
+
+```bash
+scripts/create-pico-imx7-ubuntu-image.sh \
+  --base-image /absolute/path/to/ubuntu-22.04.raw \
+  --module-build /absolute/path/to/validated-module-build \
+  --output-image /absolute/path/to/new-pico-imx7-ubuntu.raw
+```
+
+The helper verifies the exact inspected base-image checksum, expected two
+partition layout, module build identity, ARM ELF type, and literal vermagic.
+It copies the base image, replaces only the seven existing Wi-Fi/camera module
+paths in the ext4 root filesystem, runs `depmod` against a private extracted
+module tree, and verifies each copied module from the resulting image. It
+writes a sibling `.provenance` record and refuses to overwrite either output.
+Use the existing `flash-bundle.sh` only when separately validated SPL, U-Boot,
+and UUU assets are available; this raw image is ready for a reviewed SD-card
+flash workflow, not evidence that UUU boot assets are compatible.
+
+Flash the raw image to a whole, unmounted SD-card block device only after the
+default dry run prints both required confirmations:
+
+```bash
+scripts/flash-pico-imx7-ubuntu-image.sh \
+  --image /absolute/path/to/new-pico-imx7-ubuntu.raw \
+  --device /dev/sdX
+```
+
+The helper refuses partitions, mounted disks, the current root device, images
+larger than the disk, a missing provenance record, or a checksum mismatch. It
+does not write unless `--flash` and the exact image/device confirmations from
+the dry run are supplied. Confirm the selected `/dev/sdX` independently: a
+successful write is not a boot or hardware-function test.
 
 ## Wi-Fi module evidence
 

@@ -38,4 +38,12 @@ placeholder_manifest='phase-2-workflow.manifest'
 [[ ! -e "$repo_root/examples/$placeholder_manifest" ]] ||
   fail 'deleted placeholder manifest is still present'
 
+vermagic_fixture="$(mktemp)"
+readonly vermagic_fixture
+trap 'rm -f -- "$vermagic_fixture"' EXIT
+printf '\0vermagic=5.15.71 SMP preempt mod_unload modversions ARMv7 p2v8 \0' > "$vermagic_fixture"
+parsed_vermagic="$(LC_ALL=C strings -a -- "$vermagic_fixture" | awk -F= '$1 == "vermagic" { print substr($0, 10) }')"
+[[ "$parsed_vermagic" == '5.15.71 SMP preempt mod_unload modversions ARMv7 p2v8 ' ]] ||
+  fail 'vermagic parser did not preserve the exact value without its separator'
+
 printf 'Pico i.MX7 Ubuntu configuration tests passed\n'
