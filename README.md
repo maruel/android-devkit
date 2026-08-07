@@ -2,8 +2,8 @@
 
 This repository builds and packages six modules for the inspected TechNexion
 Pico i.MX7 Ubuntu 22.04 image (kernel `5.15.71`): AP6335 BCM4339 Broadcom
-FullMAC SDIO Wi-Fi and MIPI OV5640 camera support. It includes a validated
-prebuilt set in
+FullMAC SDIO Wi-Fi and the vendor MIPI-camera stack. Both Wi-Fi and the
+CAM-OV5645 camera are validated on the target. It includes a prebuilt set in
 [`prebuilt/pico-imx7/ubuntu-22.04-5.15.71`](prebuilt/pico-imx7/ubuntu-22.04-5.15.71),
 but you can rebuild it from source.
 
@@ -44,6 +44,18 @@ sudo apt install --no-install-recommends bc dwarves gcc-12-arm-linux-gnueabi lib
 ```
 
 The scripts keep the kernel checkout and build output in `artifacts/`.
+
+## Verify the camera on the target
+
+The validated camera appears as `/dev/video1`. List its modes and capture 30
+VGA YUYV frames:
+
+```bash
+v4l2-ctl -d /dev/video1 --list-formats-ext
+timeout 15 v4l2-ctl -d /dev/video1 \
+  --set-fmt-video=width=640,height=480,pixelformat=YUYV \
+  --stream-mmap=3 --stream-count=30 --stream-to=capture.raw
+```
 
 ## Build an image from rebuilt modules
 

@@ -5,7 +5,7 @@ readonly BASE_IMAGE_SHA256='9fb5d12f5f50167d5529979b86fad7fcba454ea5b8e984feb43f
 readonly KERNEL_COMMIT='9339d9595f0d5192cf154b6fe6b98f43e8226fe8'
 readonly TARGET_RELEASE='5.15.71'
 readonly TARGET_VERMAGIC='5.15.71 SMP preempt mod_unload modversions ARMv7 p2v8 '
-readonly PREPARED_CONFIG_SHA256='14549f57c424b8966dba54a1059b38a1f7bd087504fe860a0470abc72fb637f0'
+readonly PREPARED_CONFIG_SHA256='36d36040492a62bd7593cdc03311c7d7e7f65bac1ba1e40272f26cb278365b99'
 readonly AP6335_FIRMWARE_SHA256='16cbdac88d49c2f76eea461cf6c81e3866572f850fe29be726555549ac1c8f55'
 readonly AP6335_NVRAM_SHA256='3c4d7058803bd54d0443de0c272b6abd67e5f28f5ba11ecaf790331758f24cf4'
 
@@ -131,7 +131,7 @@ declare -a module_names=(
   'mxc_v4l2_capture.ko'
   'v4l2-int-device.ko'
   'mxc_mipi_csi.ko'
-  'ov5640_camera_mipi_v2.ko'
+  'ov5645_camera_mipi_v2.ko'
 )
 declare -a module_destinations=(
   'kernel/drivers/net/wireless/broadcom/brcm80211/brcmutil/brcmutil.ko'
@@ -139,7 +139,7 @@ declare -a module_destinations=(
   'kernel/drivers/media/platform/mxc/capture/mxc_v4l2_capture.ko'
   'kernel/drivers/media/platform/mxc/capture/v4l2-int-device.ko'
   'kernel/drivers/media/platform/mxc/capture/mxc_mipi_csi.ko'
-  'kernel/drivers/media/platform/mxc/capture/ov5640_camera_mipi_v2.ko'
+  'kernel/drivers/media/platform/mxc/capture/ov5645_camera_mipi_v2.ko'
 )
 for module_name in "${module_names[@]}"; do
   module="$modules_dir/$module_name"

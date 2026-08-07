@@ -21,7 +21,7 @@ extraction. It was produced by `olddefconfig` from the authoritative file in a
 Git-free archive of TechNexion `linux-tn-imx` commit
 `9339d9595f0d5192cf154b6fe6b98f43e8226fe8`:
 
-- SHA-256: `14549f57c424b8966dba54a1059b38a1f7bd087504fe860a0470abc72fb637f0`
+- SHA-256: `36d36040492a62bd7593cdc03311c7d7e7f65bac1ba1e40272f26cb278365b99`
 - Source-alignment evidence:
   `artifacts/ubuntu-22.04/source-alignment-9339d959-report.txt` in the
   evidence workspace.
@@ -31,7 +31,8 @@ Git-free archive of TechNexion `linux-tn-imx` commit
 Compared with the authoritative image configuration, the derived configuration
 changes the image's QCA driver selection to the runtime-verified AP6335
 Broadcom SDIO driver (`CONFIG_BRCMFMAC=m`, `CONFIG_BRCMFMAC_SDIO=y`), disables
-the unused ath10k driver, carries the Kconfig compiler-version baseline, and adds
+the unused ath10k driver, enables the vendor CAM-OV5645 MIPI driver
+(`CONFIG_MXC_CAMERA_OV5645_MIPI_V2=m`), carries the Kconfig compiler-version baseline, and adds
 Kconfig defaults/capability values, including `CONFIG_VIDEO_TEVS=y`,
 `CONFIG_CC_HAS_ASM_GOTO_OUTPUT=y`, auto-variable-initialization capability
 flags, zero-call-used-register capability flags, and

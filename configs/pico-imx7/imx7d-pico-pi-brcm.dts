@@ -1,6 +1,7 @@
 /*
- * Keep the Ubuntu image's QCA display/camera wiring, but use the Broadcom
- * AP6335 SDIO clock, regulator, and reset sequence observed on the target.
+ * Keep the Ubuntu image's QCA display wiring, add the Broadcom AP6335 SDIO
+ * clock/power sequence, and restore the CAM-OV5645 wiring from TechNexion's
+ * PICO-PI i.MX7 Yocto/Android-era device tree.
  */
 /dts-v1/;
 
@@ -30,4 +31,21 @@
 	vmmc-supply = <&wlreg_on>;
 	mmc-pwrseq = <&usdhc2_pwrseq>;
 	wakeup-source;
+};
+
+/*
+ * The Ubuntu DTB describes a TEVI OV5640 plus PCA9554 at I2C address 0x24.
+ * The PICO-PI kit's CAM-OV5645 instead uses direct GPIO1_4 power-down,
+ * GPIO1_5 reset, and CLKO1.  Retain the existing endpoint label so the
+ * receiver graph inherited from imx7d-pico-qca.dtsi stays connected.
+ */
+&ov5640_mipi {
+	compatible = "ovti,ov5645_mipi_v2";
+	clocks = <&clks IMX7D_CLKO1_ROOT_CG>;
+	pwn-gpios = <&gpio1 4 1>;
+	rst-gpios = <&gpio1 5 0>;
+};
+
+&pca9554_tev_mipi {
+	status = "disabled";
 };

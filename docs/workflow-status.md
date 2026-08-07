@@ -44,9 +44,9 @@ single selected delivery image. [Yocto source note](source-notes/YOCTO.md)
 - Determine the boot-image/SPL/U-Boot pairing and artifact format for the
   selected release. The recorded self-built SPL path is explicitly marked as
   not working. [flashing source note](source-notes/FLASHING.md)
-- Establish a camera acceptance test and the required driver/module set. The
-  note says camera testing is not working and only questions whether
-  `ov5640_camera_mipi_v2.ko` is present. [Ubuntu source note](source-notes/UBUNTU.md)
+- The camera acceptance test is complete: the target binds
+  `ov5645_camera_mipi_v2` at `3-003c`, lists YUYV capture modes, and completed
+  a bounded 30-frame 640×480 capture. [Ubuntu workflow](workflows/ubuntu.md)
 
 ## Prohibited assumptions
 

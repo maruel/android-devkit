@@ -70,7 +70,7 @@ target is decisive: SDIO reports Broadcom `0x02d0:0x4335`; the vendor driver
 identifies it as `BCM4339/2`. The derived configuration enables `brcmfmac` SDIO
 and the image helper selects `wifi_module=brcm` plus a hybrid DTB named
 `imx7d-pico-pi.dtb`. For
-the runtime-verified AP6335/BCM4339 and MIPI OV5640 components, use the concrete builder only
+the runtime-verified AP6335/BCM4339 and CAM-OV5645 components, use the concrete builder only
 with a local Git repository that contains TechNexion `linux-tn-imx` commit
 `9339d9595f0d5192cf154b6fe6b98f43e8226fe8` and the derived configuration:
 
@@ -92,7 +92,7 @@ the inspected image:
 
 - `brcmutil.ko` and `brcmfmac.ko`;
 - `mxc_v4l2_capture.ko`, `v4l2-int-device.ko`, `mxc_mipi_csi.ko`, and
-  `ov5640_camera_mipi_v2.ko`.
+  `ov5645_camera_mipi_v2.ko`.
 
 The expected visible vermagic is
 `5.15.71 SMP preempt mod_unload modversions ARMv7 p2v8`; the raw module string
@@ -154,12 +154,9 @@ not merely an image-content check.
 
 ## Camera evidence
 
-The note identifies the CAM-OV5645 as a hardware claim and records V4L2 test
-commands, a TechNexion camera-test link, and a question whether
-`ov5640_camera_mipi_v2.ko` exists on a `5.15.71` target. It explicitly says
-camera testing is not working. Therefore no camera build command is approved
-yet. [Ubuntu source note](../source-notes/UBUNTU.md)
-
-Before implementation, Phase 2 must obtain the target config, identify the
-camera device-tree node and required media modules, and define a non-destructive
-capture/format-enumeration acceptance test.
+The target uses `ov5645_camera_mipi_v2` at I²C `3-003c` with the PICO-PI
+CAM-OV5645 GPIO wiring. The MIPI CSI receiver remains at 240 MHz with
+`csis-wclk` enabled. `/dev/video1` enumerates YUYV modes from 640×480 through
+2592×1944; a bounded 30-frame 640×480 YUYV capture completed successfully.
+The replacement avoids the non-responsive PCA9554 path inherited from the
+Ubuntu OV5640 configuration.

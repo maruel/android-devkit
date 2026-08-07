@@ -15,11 +15,15 @@ note does not apply to the verified Ubuntu boot flow.
 
 ## Camera
 
-The notes point to an OV5645 camera and record failed/unfinished V4L2 work.
-They do not establish whether `ov5640_camera_mipi_v2.ko` is the needed module
-or whether the selected image has the matching device-tree/media stack.
-[Ubuntu source note](../source-notes/UBUNTU.md)
+The board documentation identifies the tested camera as TechNexion
+CAM-OV5645. Ubuntu's inherited device tree instead described an OV5640 through
+a PCA9554 at I²C `3-0024`; that expander did not respond, leaving `/dev/video1`
+without formats. The older PICO-PI vendor device tree identifies the correct
+direct GPIO power-down/reset wiring at I²C `3-003c` and the
+`ov5645_mipi_v2` driver.
 
-Phase 2 evidence required: target kernel release and config, enabled camera
-device-tree node, module paths/ABI, firmware requirements if any, and the
-expected `v4l2-ctl --list-devices` plus format-enumeration result.
+The delivered hybrid DTB uses that OV5645 wiring while retaining the 5.15
+MIPI-CSI receiver's 240 MHz clock and `csis-wclk` setting. The target now binds
+`ov5645_mipi_v2` at `3-003c`, enumerates YUYV modes through 2592×1944, and
+successfully captured 30 VGA frames from `/dev/video1`. [PICO-PI hardware
+manual](https://www.mouser.com/datasheet/2/608/technexion_05242017_PICO-PI-IMX7-1214899.pdf)

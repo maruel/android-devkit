@@ -2,7 +2,7 @@
 set -euo pipefail
 
 readonly KERNEL_COMMIT='9339d9595f0d5192cf154b6fe6b98f43e8226fe8'
-readonly PREPARED_CONFIG_SHA256='14549f57c424b8966dba54a1059b38a1f7bd087504fe860a0470abc72fb637f0'
+readonly PREPARED_CONFIG_SHA256='36d36040492a62bd7593cdc03311c7d7e7f65bac1ba1e40272f26cb278365b99'
 readonly TARGET_RELEASE='5.15.71'
 # The literal .modinfo value ends in one space; the image modules carry that
 # same byte after the ARM architecture vermagic fragment.
@@ -137,7 +137,7 @@ declare -a module_paths=(
   'drivers/media/platform/mxc/capture/mxc_v4l2_capture.ko'
   'drivers/media/platform/mxc/capture/v4l2-int-device.ko'
   'drivers/media/platform/mxc/capture/mxc_mipi_csi.ko'
-  'drivers/media/platform/mxc/capture/ov5640_camera_mipi_v2.ko'
+  'drivers/media/platform/mxc/capture/ov5645_camera_mipi_v2.ko'
 )
 declare -a record_lines=(
   'format=pico-imx7-ubuntu-22.04-module-build-v1'
