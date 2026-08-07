@@ -65,8 +65,25 @@ It prints two confirmation strings. Repeat the command with `--flash` and both
 exact confirmations to write the whole, unmounted card. Do not use a partition
 such as `/dev/sdX1`.
 
-The raw SD image workflow is complete. UUU flashing requires separately
-validated SPL, U-Boot, and UUU assets and is intentionally not implied here.
+## Flash eMMC over USB
+
+Fetch the pinned TechNexion UUU package and its matching Pico i.MX7 boot
+assets, then set the board DIP switches to USB boot and connect its USB OTG
+port. The script confirms the expected NXP USB identity (`MX7D SDP`,
+`15a2:0076`) and is dry-run by default:
+
+```bash
+sudo apt install --no-install-recommends curl unzip
+./fetch-emmc-boot-assets.sh
+./flash-emmc.sh
+```
+
+It prints two required confirmations. Repeat the command with `--flash` and
+those exact values to erase and write eMMC. The fetched files live under the
+ignored `artifacts/uuu-assets/pico-imx7/`; you can override them with
+`--spl`, `--u-boot`, and `--uuu` only when you have separately validated
+compatibility. After UUU completes, return the DIP switches to normal eMMC
+boot before restarting.
 
 See [the detailed Ubuntu workflow](docs/workflows/ubuntu.md) for provenance,
 configuration extraction, and validation details.
