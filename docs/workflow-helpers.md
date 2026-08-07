@@ -12,12 +12,12 @@ Wi-Fi connection, camera capture, or flash.
 
 ## Manifest setup
 
-Copy `examples/phase-2-workflow.manifest` outside the repository and replace
-every `PLACEHOLDER` value with an explicit selection. The example intentionally
-contains placeholders only, so every helper rejects it. The manifest grammar is
-strict: one known uppercase `KEY=value` pair per line, no comments, blank lines,
-duplicate fields, whitespace, shell syntax, or extra fields. It is parsed as
-data; it is never sourced.
+Create a manifest outside the repository with explicit, reviewed selections.
+No prefilled manifest is supplied because a placeholder cannot establish the
+board, image, component, boot-asset, or flash-target authority required by the
+helpers. The manifest grammar is strict: one known uppercase `KEY=value` pair
+per line, no comments, blank lines, duplicate fields, whitespace, shell syntax,
+or extra fields. It is parsed as data; it is never sourced.
 
 All selected output locations must be clean absolute paths. Set
 `ARTIFACTS_ROOT`, `KERNEL_BUILD_ROOT`, and `CONFIG_OUTPUT_ROOT` to dedicated,

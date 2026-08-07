@@ -23,6 +23,76 @@ kernel checkout. This is the required starting point for a compatible module
 build, contingent on first recording the target's kernel release and the
 source/ref mapping. [Ubuntu source note](../source-notes/UBUNTU.md)
 
+## Reproducible extraction from the recorded Ubuntu 22.04 image
+
+For one TechNexion Pico i.MX7 Ubuntu 22.04 image that has been inspected, the
+VFAT partition's `/dev/sda1:/zImage` file has SHA-256
+`5dc157521db63d3ba5223fd9680f5336b0da012b392454b7fc6b5e60de7e9756`. Its
+zImage contains an LZOP stream beginning at byte 17,384. Decompressing that
+stream and running the canonical Linux v5.15.71 `scripts/extract-ikconfig`
+recovers a 188,691-byte configuration with SHA-256
+`7f2c4ccf19a61c80bd43c3e9b85d64d43d7f97bd915a1cb9fcf56c92ad593825`.
+
+`scripts/extract-pico-imx7-ubuntu-config.sh` implements only that observed
+format. It does not mount an image, modify it, download anything, or claim to
+support arbitrary ARM zImages. First obtain `/zImage` from the image by a
+separate read-only method, and use a canonical `extract-ikconfig` from a Linux
+source checkout matching the target kernel version:
+
+```bash
+scripts/extract-pico-imx7-ubuntu-config.sh \
+  --zimage /absolute/path/to/zImage \
+  --extract-ikconfig /absolute/path/to/linux-v5.15.71/scripts/extract-ikconfig \
+  --output /absolute/path/to/output/pico-imx7-ubuntu-22.04.config \
+  --expected-zimage-sha 5dc157521db63d3ba5223fd9680f5336b0da012b392454b7fc6b5e60de7e9756 \
+  --expected-config-sha 7f2c4ccf19a61c80bd43c3e9b85d64d43d7f97bd915a1cb9fcf56c92ad593825
+```
+
+Prerequisites are local `dd`, `lzop`, `mktemp`, `sha256sum`, `grep`, `ln`, and
+the supplied canonical extractor. The helper requires absolute, non-symlink
+regular-file inputs and an existing non-symlink output parent. It refuses both
+an existing config and its sibling `.provenance` record, stages all extraction
+under a private temporary directory, validates both IKCONFIG settings, and
+atomically publishes new paths without replacing any existing file.
+
+The repository tracks the successful image extraction as
+[`configs/pico-imx7/ubuntu-22.04-5.15.71.config`](../../configs/pico-imx7/ubuntu-22.04-5.15.71.config).
+It also tracks a separately named, derived
+[`ubuntu-22.04-5.15.71-prepared.config`](../../configs/pico-imx7/ubuntu-22.04-5.15.71-prepared.config)
+for the exact vendor-source preflight. Read the
+[configuration provenance](../../configs/pico-imx7/README.md) before using the
+derived file: it is not byte-identical to the image configuration.
+
+## Constrained module rebuild
+
+For the selected QCA and MIPI OV5640 components, use the concrete builder only
+with a local Git repository that contains TechNexion `linux-tn-imx` commit
+`9339d9595f0d5192cf154b6fe6b98f43e8226fe8` and the derived configuration:
+
+```bash
+scripts/build-pico-imx7-ubuntu-modules.sh \
+  --source-checkout /absolute/path/to/linux-tn-imx \
+  --prepared-config /absolute/path/to/ubuntu-22.04-5.15.71-prepared.config \
+  --output-dir /absolute/path/to/new-module-build-output
+```
+
+The command creates a Git-free source archive under its new output directory,
+uses `/usr/bin/arm-linux-gnueabi-gcc-14`, performs a full kernel build to obtain
+`Module.symvers`, then rebuilds only the required Wi-Fi and camera directories.
+It publishes no image and installs nothing. It rejects the result unless all
+seven ARM modules are non-empty and their literal `.modinfo` vermagic matches
+the inspected image:
+
+- `ath.ko`, `ath10k_core.ko`, and `ath10k_pci.ko`;
+- `mxc_v4l2_capture.ko`, `v4l2-int-device.ko`, `mxc_mipi_csi.ko`, and
+  `ov5640_camera_mipi_v2.ko`.
+
+The expected visible vermagic is
+`5.15.71 SMP preempt mod_unload modversions ARMv7 p2v8`; the raw module string
+has one final spacer after `p2v8`, which the helper compares as well. A passing
+vermagic check alone does not authorize image replacement: compare modversion
+CRCs with the image module metadata when that metadata is available.
+
 ## Wi-Fi module evidence
 
 The notes record building `drivers/net/wireless/broadcom/brcm80211` after

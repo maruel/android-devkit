@@ -28,6 +28,9 @@ flashed successfully.
   image, and Wi-Fi customization notes.
 - [Ubuntu image and kernel evidence](workflows/ubuntu.md) — recorded base-image,
   config-extraction, Wi-Fi, and camera investigation notes.
+- [Pico i.MX7 tracked configurations](../configs/pico-imx7/README.md) — the
+  authoritative image extraction and the separately labeled derived build
+  input.
 - [Safe flashing](workflows/flashing.md) — UUU evidence and non-negotiable
   target-selection safeguards.
 - [Alternative OS references](references/alternative-oses.md) — non-selected
