@@ -21,7 +21,7 @@ extraction. It was produced by `olddefconfig` from the authoritative file in a
 Git-free archive of TechNexion `linux-tn-imx` commit
 `9339d9595f0d5192cf154b6fe6b98f43e8226fe8`:
 
-- SHA-256: `644090a71b5dbc975720d6e4fbdb391b9e8869064ac6fd6689a64c12965093dc`
+- SHA-256: `14549f57c424b8966dba54a1059b38a1f7bd087504fe860a0470abc72fb637f0`
 - Source-alignment evidence:
   `artifacts/ubuntu-22.04/source-alignment-9339d959-report.txt` in the
   evidence workspace.
@@ -29,10 +29,9 @@ Git-free archive of TechNexion `linux-tn-imx` commit
   `af4b4f3be385277f8d6f24e05c776d9339f0a556`.
 
 Compared with the authoritative image configuration, the derived configuration
-changes the selected QCA9377 transport from the image's unusable PCI module to
-the matching SDIO module (`CONFIG_ATH10K_SDIO=m`,
-`CONFIG_ATH10K_PCI` disabled), carries the Kconfig compiler-version baseline,
-and adds
+changes the image's QCA driver selection to the runtime-verified AP6335
+Broadcom SDIO driver (`CONFIG_BRCMFMAC=m`, `CONFIG_BRCMFMAC_SDIO=y`), disables
+the unused ath10k driver, carries the Kconfig compiler-version baseline, and adds
 Kconfig defaults/capability values, including `CONFIG_VIDEO_TEVS=y`,
 `CONFIG_CC_HAS_ASM_GOTO_OUTPUT=y`, auto-variable-initialization capability
 flags, zero-call-used-register capability flags, and

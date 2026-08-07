@@ -2,7 +2,7 @@
 set -euo pipefail
 
 readonly KERNEL_COMMIT='9339d9595f0d5192cf154b6fe6b98f43e8226fe8'
-readonly PREPARED_CONFIG_SHA256='644090a71b5dbc975720d6e4fbdb391b9e8869064ac6fd6689a64c12965093dc'
+readonly PREPARED_CONFIG_SHA256='14549f57c424b8966dba54a1059b38a1f7bd087504fe860a0470abc72fb637f0'
 readonly TARGET_RELEASE='5.15.71'
 # The literal .modinfo value ends in one space; the image modules carry that
 # same byte after the ARM architecture vermagic fragment.
@@ -51,6 +51,9 @@ module_vermagic() {
 source_checkout=""
 prepared_config=""
 output_dir=""
+script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+readonly script_dir
+brcm_dts="$script_dir/../configs/pico-imx7/imx7d-pico-pi-brcm.dts"
 
 while (($# > 0)); do
   case "$1" in
@@ -78,6 +81,7 @@ done
 [[ -d "$source_checkout" && ! -L "$source_checkout" ]] ||
   fail '--source-checkout must name a non-symlink directory'
 require_absolute_regular_file '--prepared-config' "$prepared_config"
+require_absolute_regular_file 'Broadcom hybrid device tree' "$brcm_dts"
 [[ ! -e "$output_dir" && ! -L "$output_dir" ]] ||
   fail "refusing to overwrite existing output directory: $output_dir"
 
@@ -102,12 +106,14 @@ mkdir -- "$output_dir"
 source_stage="$output_dir/source-stage"
 build_dir="$output_dir/build"
 modules_dir="$output_dir/modules"
-mkdir -- "$source_stage" "$build_dir" "$modules_dir"
+boot_dir="$output_dir/boot"
+mkdir -- "$source_stage" "$build_dir" "$modules_dir" "$boot_dir"
 
 git -C "$source_checkout" archive --format=tar "$KERNEL_COMMIT" |
   tar -xf - -C "$source_stage"
 [[ ! -d "$source_stage/.git" ]] || fail 'Git-free source staging unexpectedly contains .git metadata'
 install -m 0644 -- "$prepared_config" "$build_dir/.config"
+install -m 0644 -- "$brcm_dts" "$source_stage/arch/arm/boot/dts/imx7d-pico-pi-brcm.dts"
 
 make_command=(/usr/bin/make -C "$source_stage" O="$build_dir" ARCH=arm
   CROSS_COMPILE="$CROSS_COMPILE" CC="$CROSS_GCC")
@@ -121,14 +127,13 @@ kernelrelease="$("${build_environment[@]}" "${make_command[@]}" -s kernelrelease
 "${build_environment[@]}" "${make_command[@]}" -j4
 [[ -f "$build_dir/Module.symvers" && ! -L "$build_dir/Module.symvers" && -s "$build_dir/Module.symvers" ]] ||
   fail 'full kernel build did not produce Module.symvers'
-"${build_environment[@]}" "${make_command[@]}" M=drivers/net/wireless/ath modules
-"${build_environment[@]}" "${make_command[@]}" M=drivers/net/wireless/ath/ath10k modules
+"${build_environment[@]}" "${make_command[@]}" M=drivers/net/wireless/broadcom/brcm80211 modules
 "${build_environment[@]}" "${make_command[@]}" M=drivers/media/platform/mxc/capture modules
+"${build_environment[@]}" "${make_command[@]}" imx7d-pico-pi-brcm.dtb
 
 declare -a module_paths=(
-  'drivers/net/wireless/ath/ath.ko'
-  'drivers/net/wireless/ath/ath10k/ath10k_core.ko'
-  'drivers/net/wireless/ath/ath10k/ath10k_sdio.ko'
+  'drivers/net/wireless/broadcom/brcm80211/brcmutil/brcmutil.ko'
+  'drivers/net/wireless/broadcom/brcm80211/brcmfmac/brcmfmac.ko'
   'drivers/media/platform/mxc/capture/mxc_v4l2_capture.ko'
   'drivers/media/platform/mxc/capture/v4l2-int-device.ko'
   'drivers/media/platform/mxc/capture/mxc_mipi_csi.ko'
@@ -158,6 +163,16 @@ for module_path in "${module_paths[@]}"; do
   install -m 0644 -- "$source_module" "$output_module"
   record_lines+=("module=$module_path" "module_sha256=$(sha256_file "$output_module")" "module_vermagic=$vermagic")
 done
+
+source_dtb="$build_dir/arch/arm/boot/dts/imx7d-pico-pi-brcm.dtb"
+output_dtb="$boot_dir/imx7d-pico-pi.dtb"
+[[ -f "$source_dtb" && ! -L "$source_dtb" && -s "$source_dtb" ]] ||
+  fail 'required Broadcom device tree was not produced'
+install -m 0644 -- "$source_dtb" "$output_dtb"
+record_lines+=(
+  'boot_dtb=imx7d-pico-pi.dtb'
+  "boot_dtb_sha256=$(sha256_file "$output_dtb")"
+)
 
 printf '%s\n' "${record_lines[@]}" > "$output_dir/modules.record"
 printf 'built and ABI-validated Pico i.MX7 Ubuntu modules: %s\n' "$output_dir"

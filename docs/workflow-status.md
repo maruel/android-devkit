@@ -29,11 +29,10 @@ single selected delivery image. [Yocto source note](source-notes/YOCTO.md)
 - Select one exact base image and release. The notes mention Ubuntu 22.04,
   several Yocto releases, and several image names, without a verified chosen
   artifact.
-- Confirm the physical module and its Wi-Fi package. The Ubuntu note contains
-  contradictory QCA9377 and AP6335/BCM4339 descriptions; the investigation
-  calls AP6335/BCM4339 a conclusion from internet sources, not hardware
-  evidence. [Ubuntu source note](source-notes/UBUNTU.md)
-  [investigation source note](source-notes/INVESTIGATION.md)
+- The physical Wi-Fi module is now confirmed: runtime SDIO ID `0x02d0:0x4335`
+  resolves to BCM4339/2 in the vendor `brcmfmac` driver, and the BRCM DTB plus
+  AP6335 firmware created `wlan0`. The earlier QCA selection in the downloaded
+  image was incorrect for this device. [Ubuntu workflow](workflows/ubuntu.md)
 - Confirm the running kernel release, its exact source tree/ref, and whether
   the recorded commit `9339d9595f0d5192cf154b6fe6b98f43e8226fe8` corresponds
   to the selected source/ref. The notes do not establish that mapping.
@@ -51,8 +50,7 @@ single selected delivery image. [Yocto source note](source-notes/YOCTO.md)
 
 ## Prohibited assumptions
 
-Do not infer partition layout, device credentials, target USB path, boot media,
-kernel configuration, firmware filename, or a successful build/flash from the
-notes. In particular, do not make `WIFI_MODULE=brcm` a solution: the notes
-record it as ineffective in at least one Yocto attempt. [Yocto source note](source-notes/YOCTO.md)
-[investigation source note](source-notes/INVESTIGATION.md)
+Do not infer partition layout, target USB path, boot media, kernel configuration,
+or a successful build/flash from the notes. Runtime evidence supersedes the
+earlier Wi-Fi ambiguity: this target requires `WIFI_MODULE=brcm` and the BRCM
+device tree. [Ubuntu workflow](workflows/ubuntu.md)

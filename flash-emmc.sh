@@ -9,7 +9,7 @@ usage() {
 spl=''
 u_boot=''
 uuu=''
-image_name='pico-imx7-ubuntu-22.04.raw'
+image_name='pico-imx7-ubuntu-22.04-brcm.raw'
 declare -a flash_arguments=()
 while (($# > 0)); do
   case "$1" in

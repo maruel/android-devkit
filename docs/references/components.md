@@ -2,19 +2,16 @@
 
 ## Wi-Fi
 
-The notes contain conflicting hardware descriptions: one lists QCA9377, while
-the investigation asserts AP6335 with BCM4339 based on external internet
-sources. Treat the radio identity as unresolved until confirmed from the actual
-board and selected image. [Ubuntu source note](../source-notes/UBUNTU.md)
-[investigation source note](../source-notes/INVESTIGATION.md)
+The downloaded image calls the radio QCA, but runtime SDIO enumeration on the
+actual board reports Broadcom `0x02d0:0x4335`; the vendor driver identifies it
+as BCM4339/2. The radio is therefore the AP6335/Broadcom path. [Ubuntu workflow](../workflows/ubuntu.md)
 
 For a Broadcom path, the evidence names `brcmfmac`, `brcmutil`, AP6335 firmware
-files, and an NVRAM override. The only recorded runtime result includes an
-HT-clock timeout; no working Wi-Fi result is documented. [Ubuntu source note](../source-notes/UBUNTU.md)
+files, and an NVRAM override. The QCA DTB caused an HT-clock timeout; selecting
+the BRCM DTB and the AP6335 firmware created `wlan0`. [Ubuntu workflow](../workflows/ubuntu.md)
 
-For Yocto, the `WIFI_MODULE=brcm` environment setting is explicitly reported as
-ignored, with an issue link retained in the source note. [Yocto source note](../source-notes/YOCTO.md)
-[investigation source note](../source-notes/INVESTIGATION.md)
+An older Yocto attempt reported `WIFI_MODULE=brcm` as ignored; that historical
+note does not apply to the verified Ubuntu boot flow.
 
 ## Camera
 

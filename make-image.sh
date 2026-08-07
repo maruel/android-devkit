@@ -12,7 +12,7 @@ fail() {
 }
 
 rebuilt=false
-output_name='pico-imx7-ubuntu-22.04.raw'
+output_name='pico-imx7-ubuntu-22.04-brcm.raw'
 while (($# > 0)); do
   case "$1" in
     --rebuilt) rebuilt=true; shift ;;
@@ -28,14 +28,14 @@ readonly script_dir
 command -v guestfish >/dev/null 2>&1 ||
   fail 'install image prerequisites first: sudo apt install --no-install-recommends kmod libguestfs-tools'
 base_image="$script_dir/artifacts/ubuntu-22.04/ubuntu-22.04.raw"
-firmware_dir="$script_dir/artifacts/firmware/qca9377"
+firmware_dir="$script_dir/artifacts/firmware/ap6335"
 module_build="$script_dir/prebuilt/pico-imx7/ubuntu-22.04-5.15.71"
 if [[ "$rebuilt" == true ]]; then
   module_build="$script_dir/artifacts/module-build"
 fi
 [[ -f "$base_image" && ! -L "$base_image" && -s "$base_image" ]] ||
   fail "base image is missing: $base_image; run ./fetch-base-image.sh first"
-"$script_dir/fetch-qca9377-firmware.sh"
+"$script_dir/fetch-ap6335-firmware.sh"
 exec "$script_dir/scripts/create-pico-imx7-ubuntu-image.sh" \
   --base-image "$base_image" \
   --module-build "$module_build" \

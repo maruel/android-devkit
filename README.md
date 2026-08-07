@@ -1,8 +1,9 @@
 # Pico i.MX7 Ubuntu 22.04 Wi-Fi and camera modules
 
-This repository builds and packages seven modules for the inspected TechNexion
-Pico i.MX7 Ubuntu 22.04 image (kernel `5.15.71`): QCA9377 ath10k SDIO Wi-Fi
-and MIPI OV5640 camera support. It includes a validated prebuilt set in
+This repository builds and packages six modules for the inspected TechNexion
+Pico i.MX7 Ubuntu 22.04 image (kernel `5.15.71`): AP6335 BCM4339 Broadcom
+FullMAC SDIO Wi-Fi and MIPI OV5640 camera support. It includes a validated
+prebuilt set in
 [`prebuilt/pico-imx7/ubuntu-22.04-5.15.71`](prebuilt/pico-imx7/ubuntu-22.04-5.15.71),
 but you can rebuild it from source.
 
@@ -23,8 +24,9 @@ sudo apt install --no-install-recommends kmod libguestfs-tools
 ./make-image.sh
 ```
 
-This fetches pinned QCA9377 SDIO firmware, uses the tracked prebuilt modules,
-and writes the new image and provenance record under `artifacts/ubuntu-22.04/`.
+This fetches pinned AP6335 firmware and NVRAM, uses the tracked prebuilt
+modules, and writes `pico-imx7-ubuntu-22.04-brcm.raw` plus provenance under
+`artifacts/ubuntu-22.04/`.
 It tries `guestfish` without privilege first. If the host kernel is unreadable
 to its helper VM, it requests your `sudo` password, retries with elevation, and
 hands ownership of its temporary archives back to you. The script does not
