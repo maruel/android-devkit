@@ -25,11 +25,15 @@ done
   fail '--output-name must be a single .raw filename'
 script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir
+command -v guestfish >/dev/null 2>&1 ||
+  fail 'install image prerequisites first: sudo apt install --no-install-recommends kmod libguestfs-tools'
 base_image="$script_dir/artifacts/ubuntu-22.04/ubuntu-22.04.raw"
 module_build="$script_dir/prebuilt/pico-imx7/ubuntu-22.04-5.15.71"
 if [[ "$rebuilt" == true ]]; then
   module_build="$script_dir/artifacts/module-build"
 fi
+[[ -f "$base_image" && ! -L "$base_image" && -s "$base_image" ]] ||
+  fail "base image is missing: $base_image; run ./fetch-base-image.sh first"
 exec "$script_dir/scripts/create-pico-imx7-ubuntu-image.sh" \
   --base-image "$base_image" \
   --module-build "$module_build" \

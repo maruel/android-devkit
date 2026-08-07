@@ -69,7 +69,7 @@ require_absolute_regular_file '--base-image' "$base_image"
 [[ ! -e "$output_image" && ! -L "$output_image" && ! -e "$output_image.provenance" && ! -L "$output_image.provenance" ]] ||
   fail 'refusing to overwrite an existing image or provenance record'
 
-for required_command in awk cp dirname guestfish grep mkdir mktemp mv readelf sed sha256sum strings tar wc; do
+for required_command in awk chown cp dirname guestfish grep id mkdir mktemp mv readelf sed sha256sum strings sudo tar wc; do
   require_command "$required_command"
 done
 depmod_command="$(command -v depmod || true)"
@@ -126,7 +126,20 @@ for module_name in "${module_names[@]}"; do
     fail "module vermagic does not match the target image: $module_name"
 done
 
-layout="$(guestfish --ro -a "$base_image" run : list-filesystems)"
+# Ubuntu may make host kernels unreadable to regular users. libguestfs needs
+# one only for its private appliance, so restrict elevation to guestfish and
+# the handoff of its temporary archive.
+sudo -v
+user_owner="$(id -u):$(id -g)"
+readonly user_owner
+guestfish_as_root() {
+  sudo -- guestfish "$@"
+}
+restore_user_ownership() {
+  sudo -- chown -- "$user_owner" "$1"
+}
+
+layout="$(guestfish_as_root --ro -a "$base_image" run : list-filesystems)"
 [[ "$layout" == $'/dev/sda1: vfat\n/dev/sda2: ext4' ]] ||
   fail 'base image partition layout is not the inspected vfat/ext4 layout'
 output_parent="$(dirname -- "$output_image")"
@@ -142,10 +155,10 @@ trap cleanup EXIT
 working_image="$temporary/image.raw"
 stage_root="$temporary/root"
 archive="$temporary/modules.tar"
-verify_dir="$temporary/verify"
-mkdir -- "$stage_root" "$verify_dir"
+mkdir -- "$stage_root"
 cp --reflink=auto --preserve=mode,timestamps -- "$base_image" "$working_image"
-guestfish --ro -a "$working_image" run : mount-ro /dev/sda2 / : tar-out /lib/modules "$archive"
+guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda2 / : tar-out /lib/modules "$archive"
+restore_user_ownership "$archive"
 mkdir -p -- "$stage_root/lib/modules"
 tar -C "$stage_root/lib/modules" -xf "$archive"
 for index in "${!module_names[@]}"; do
@@ -156,10 +169,10 @@ for index in "${!module_names[@]}"; do
 done
 "$depmod_command" -b "$stage_root" "$TARGET_RELEASE"
 tar -C "$stage_root/lib/modules" -cf "$archive" .
-guestfish --rw -a "$working_image" run : mount /dev/sda2 / : tar-in "$archive" /lib/modules
+guestfish_as_root --rw -a "$working_image" run : mount /dev/sda2 / : tar-in "$archive" /lib/modules
 for index in "${!module_names[@]}"; do
-  guestfish --ro -a "$working_image" run : mount-ro /dev/sda2 / : download "/lib/modules/$TARGET_RELEASE/${module_destinations[$index]}" "$verify_dir/${module_names[$index]}"
-  [[ "$(sha256_file "$verify_dir/${module_names[$index]}")" == "$(sha256_file "$modules_dir/${module_names[$index]}")" ]] ||
+  image_module_sha="$(guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda2 / : checksum sha256 "/lib/modules/$TARGET_RELEASE/${module_destinations[$index]}")"
+  [[ "$image_module_sha" == "$(sha256_file "$modules_dir/${module_names[$index]}")" ]] ||
     fail "image verification failed for ${module_names[$index]}"
 done
 image_sha="$(sha256_file "$working_image")"

@@ -26,7 +26,7 @@ prepared_config="$script_dir/configs/pico-imx7/ubuntu-22.04-5.15.71-prepared.con
 
 command -v git >/dev/null 2>&1 || fail 'git is required'
 [[ -x /usr/bin/arm-linux-gnueabi-gcc-12 ]] ||
-  fail 'install prerequisites first: sudo apt-get install --yes bc dwarves gcc-12-arm-linux-gnueabi libelf-dev lzop libguestfs-tools'
+  fail 'install build prerequisites first: sudo apt install --no-install-recommends bc dwarves gcc-12-arm-linux-gnueabi libelf-dev'
 [[ ! -e "$output_dir" && ! -L "$output_dir" ]] ||
   fail "refusing to overwrite existing build output: $output_dir"
 mkdir -p -- "$artifacts_dir"
