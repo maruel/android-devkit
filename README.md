@@ -2,20 +2,27 @@
 
 This repository builds and packages six modules for the inspected TechNexion
 Pico i.MX7 Ubuntu 22.04 image (kernel `5.15.71`): AP6335 BCM4339 Broadcom
-FullMAC SDIO Wi-Fi and the vendor MIPI-camera stack. Both Wi-Fi and the
-CAM-OV5645 camera are validated on the target. It includes a prebuilt set in
+FullMAC SDIO Wi-Fi and the vendor CAM-OV5645 MIPI-camera stack. It includes a prebuilt set in
 [`prebuilt/pico-imx7/ubuntu-22.04-5.15.71`](prebuilt/pico-imx7/ubuntu-22.04-5.15.71),
 but you can rebuild it from source.
 
-The base image is intentionally not committed. Obtain the exact raw image with
-SHA-256 `9fb5d12f5f50167d5529979b86fad7fcba454ea5b8e984feb43f2446c0e6f3ed`;
-download and verify it with:
+## TL;DR
 
 ```bash
 ./fetch-base-image.sh
+# This may require sudo password due to guestfish.
+./make-image.sh
+
+# Set the jumpers to USB boot
+./flash-emmc.sh --flash
+
+# Set the jumpers to eMMC boot and boot the computer normally
 ```
 
 ## Create a flash image
+
+The base image is intentionally not committed. Obtain the exact raw image with
+SHA-256 `9fb5d12f5f50167d5529979b86fad7fcba454ea5b8e984feb43f2446c0e6f3ed`.
 
 ```bash
 sudo apt install --no-install-recommends curl xz-utils
@@ -113,22 +120,15 @@ top row:     -**  **-           top row:     **-  -**
 bottom row:  -**  **-           bottom row:  **-  **-
 ```
 
-eMMC mode (normal)
+#### eMMC mode (normal)
 ![emmc](docs/boot_emmc_normal.jpg)
 
-USB boot (flash)
+#### USB boot (flash)
 ![usb](docs/boot_usb_flash.jpg)
 
 Power the board off before moving the caps. Use the USB-C OTG/power connector
 for the host data cable; the micro-USB connector is the serial-console
 interface. Before flashing, `lsusb -d 15a2:0076` must show one device.
-
-To erase and write eMMC, run `./flash-emmc.sh --flash` and approve its `[Y/n]`
-prompt. The fetched files live under the ignored `artifacts/uuu-assets/pico-imx7/`;
-you can override them with
-`--spl`, `--u-boot`, and `--uuu` only when you have separately validated
-compatibility. After UUU completes, return the DIP switches to normal eMMC
-boot before restarting.
 
 See [the detailed Ubuntu workflow](docs/workflows/ubuntu.md) for provenance,
 configuration extraction, and validation details.
