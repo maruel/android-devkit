@@ -65,6 +65,28 @@ is bounded to 120 seconds (including connection setup) and kills a stuck SSH
 client after a 10-second grace period. Override the limit for a known long
 command with `SSH_TECHNEXION_TIMEOUT_SECONDS=300`.
 
+## Configure target memory
+
+The target has 487 MiB RAM. For simple web pages, use NetSurf rather than
+Firefox: it used roughly 22–26 MiB proportional-set size (PSS) on the inspected
+target, versus Firefox's 85–95 MiB. The target has `netsurf-gtk` installed.
+
+[`scripts/configure-pico-imx7-memory.sh`](scripts/configure-pico-imx7-memory.sh)
+installs a fixed low-memory policy: `vm.swappiness=10` immediately, and a
+192 MiB `lzo-rle` zram swap device at the next boot. It also writes Firefox
+system preferences that reduce content processes/cache and disable saved
+logins, form fill, spellcheck, telemetry, new-tab services, notifications,
+and WebGL. WebRTC remains enabled for camera use. It also disables unused
+ModemManager, udisks/automount, Snap services, and rsyslog. It deliberately
+does not reset active swap, so reboot after configuring the board. The inspected
+Ubuntu target permits this noninteractive `sudo` invocation:
+
+```bash
+./scripts/ssh-technexion.sh sudo -n bash -s \
+  < scripts/configure-pico-imx7-memory.sh
+./scripts/ssh-technexion.sh sudo -n reboot
+```
+
 ## Verify the camera on the target
 
 The validated camera is `/dev/video1`. A bare `v4l2-ctl --set-fmt-video`

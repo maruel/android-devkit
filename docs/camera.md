@@ -44,6 +44,19 @@ The second patch is required: previously, closing a finite capture could lock
 the target. `mx6s_capture.ko` is therefore part of the supported seven-module
 replacement set.
 
+## CMA boundary
+
+The running baseline reserves 192 MiB CMA at `0x94000000`. A DTB candidate that
+changed the dynamic CMA `size` to 128 MiB was rewritten to 192 MiB before the
+kernel consumed it. A second candidate used a static
+`reg = <0x94000000 0x08000000>` reservation and booted with 128 MiB CMA.
+
+That 128 MiB candidate completed one 300-frame 1280×720 capture, leaving only
+about 7 MiB CMA free, then reset the target during a second 300-frame capture.
+The target-side 192 MiB DTB backup was restored; it again passed a 300-frame
+1280×720 soak. Keep the 192 MiB CMA reservation. No higher camera resolution
+is claimed or required by this workflow.
+
 ## Target acceptance
 
 With the corrected modules, a bare command such as:

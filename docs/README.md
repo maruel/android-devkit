@@ -13,6 +13,8 @@ results behind the reproducible build workflow.
   drivers, target tests, and limits.
 - [Hardware-acceleration inventory](acceleration.md) — verified
   display/GPU devices and codec limitations.
+- [Browser memory observations](browser-memory.md) — measured browser memory,
+  swap policy, and the current Chromium limitation.
 
 Git history retains superseded research and earlier workflow notes; this
 location contains only the current supported Ubuntu workflow.

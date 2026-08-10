@@ -33,7 +33,9 @@ TechNexion kernel commit `9339d9595f0d5192cf154b6fe6b98f43e8226fe8`.
   `/dev/video1` is validated at 1280×720 YUYV after the tracked OV5645
   mode-sync and MX6S stream-close patches. Keep `mx6s_capture.ko` in the
   supported prebuilt set: it prevents the observed close-time camera lockup.
-  See `docs/camera.md`.
+  Keep the 192 MiB CMA reservation: a static 128 MiB CMA candidate completed
+  one 720p soak but reset during a second; the 192 MiB baseline passed after
+  restoration. See `docs/camera.md`.
 - For an on-device investigation explicitly requested by the user, permission is
   granted to install software, change device state, capture screenshots, and
   reboot the device as needed. Otherwise, ask before running `apt-get install`
