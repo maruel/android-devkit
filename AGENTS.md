@@ -5,7 +5,7 @@ image: kernel `5.15.71`, raw-image SHA-256
 `9fb5d12f5f50167d5529979b86fad7fcba454ea5b8e984feb43f2446c0e6f3ed`, and
 TechNexion kernel commit `9339d9595f0d5192cf154b6fe6b98f43e8226fe8`.
 
-- Read `README.md`, `docs/reference/ubuntu-evidence.md`, and
+- Read `README.md`, `docs/ubuntu-evidence.md`, and
   `configs/pico-imx7/README.md` before changing the workflow.
 - Keep the authoritative extracted config immutable. Treat the separately named
   prepared config as a derived build input only.
@@ -33,7 +33,7 @@ TechNexion kernel commit `9339d9595f0d5192cf154b6fe6b98f43e8226fe8`.
   `/dev/video1` is validated at 1280×720 YUYV after the tracked OV5645
   mode-sync and MX6S stream-close patches. Keep `mx6s_capture.ko` in the
   supported prebuilt set: it prevents the observed close-time camera lockup.
-  See `docs/validation/camera.md`.
+  See `docs/camera.md`.
 - For an on-device investigation explicitly requested by the user, permission is
   granted to install software, change device state, capture screenshots, and
   reboot the device as needed. Otherwise, ask before running `apt-get install`

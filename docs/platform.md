@@ -25,16 +25,3 @@ This includes `mx6s_capture.ko`, which is required for safe camera stream
 teardown. The builder and image creator verify the target ABI, module identity,
 firmware, device tree, image contents, and provenance before publishing an
 output.
-
-## Safety boundaries
-
-- Never modify, mount, or overwrite the downloaded base image; create a new
-  image with `scripts/create-pico-imx7-ubuntu-image.sh`.
-- Flashing is dry-run by default. A real write requires the wrapper's explicit
-  image and device confirmations.
-- Do not alter the target boot partition except when deliberately replacing its
-  `imx7d-pico-pi.dtb`; mount only `/dev/mmcblk2p1` and retain a target-side
-  backup first.
-- Keep the inherited 240 MHz MIPI CSI receiver clock and `csis-wclk`. The
-  tested camera configuration is documented in
-  [camera validation](validation/camera.md).

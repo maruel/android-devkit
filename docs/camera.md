@@ -32,10 +32,10 @@ test pattern showed diagonal wrapped bands. This was not a YUYV/UYVY issue.
 Two patches are replayed on a Git-free archive of the pinned kernel source for
 each driver build:
 
-- [`ov5645-v4l2-mode-sync.patch`](../../patches/pico-imx7/ov5645-v4l2-mode-sync.patch)
+- [`ov5645-v4l2-mode-sync.patch`](../patches/pico-imx7/ov5645-v4l2-mode-sync.patch)
   makes `S_FMT` select the sensor mode, prevents the legacy `S_PARM`
   `capturemode` from replacing it, and initializes that mode at stream start.
-- [`mx6s-csi-stream-close.patch`](../../patches/pico-imx7/mx6s-csi-stream-close.patch)
+- [`mx6s-csi-stream-close.patch`](../patches/pico-imx7/mx6s-csi-stream-close.patch)
   stops a still-streaming downstream subdevice before the capture queue is
   released. It uses the source tree's `vb2_is_streaming()` API; a later vendor
   patch uses an unavailable API.

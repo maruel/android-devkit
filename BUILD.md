@@ -35,9 +35,18 @@ Install the kernel build tools, then run the builder. GCC 12 is required; GCC
 ```bash
 sudo apt install --no-install-recommends \
   bc bison build-essential dwarves flex gcc-12-arm-linux-gnueabi \
-  git libelf-dev libssl-dev
+  git libelf-dev libssl-dev patch
 ./build-drivers.sh
 ```
+
+This builds the vendor V2 OV5645 driver,
+`ov5645_camera_mipi_v2.ko`, with the tracked mode-synchronization patch, and
+`mx6s_capture.ko` with the stream-close patch that prevents the observed
+close-time lockup. It also rebuilds the required MIPI CSI, legacy capture, and
+AP6335 Wi-Fi modules. The builder applies both camera patches exactly to a
+Git-free archive of the pinned source, then verifies ARM ABI and literal
+vermagic for all seven modules. It does not build or use the older OV5645
+camera driver.
 
 The scripts keep the kernel checkout and build output in `artifacts/`.
 
@@ -61,8 +70,8 @@ command with `SSH_TECHNEXION_TIMEOUT_SECONDS=300`.
 The validated camera is `/dev/video1`. A bare `v4l2-ctl --set-fmt-video`
 request now configures the selected sensor mode and supports bounded 1280×720
 YUYV capture; the corrected prebuilt set includes `mx6s_capture.ko` for safe
-stream teardown. See [camera validation](docs/validation/camera.md) for
-target evidence and [hardware acceleration](docs/validation/acceleration.md)
+stream teardown. See [camera validation](docs/camera.md) for
+target evidence and [hardware acceleration](docs/acceleration.md)
 for the separate PxP/codec inventory.
 
 ## Build an image from rebuilt modules
@@ -75,6 +84,10 @@ already run the prebuilt-image command above:
 sudo apt install --no-install-recommends kmod libguestfs-tools
 ./make-image.sh --rebuilt --output-name pico-imx7-ubuntu-22.04-rebuilt.raw
 ```
+
+`--rebuilt` is required here: without it, `make-image.sh` deliberately uses the
+tracked, already-validated prebuilt modules. Both paths install the corrected
+`ov5645_camera_mipi_v2.ko` and `mx6s_capture.ko` into the new image.
 
 ## Flash an SD card
 
@@ -101,5 +114,5 @@ sudo apt install --no-install-recommends curl unzip
 ./flash-emmc.sh
 ```
 
-See [Ubuntu build evidence](docs/reference/ubuntu-evidence.md) for provenance,
+See [Ubuntu build evidence](docs/ubuntu-evidence.md) for provenance,
 configuration extraction, and validation details.
