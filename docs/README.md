@@ -1,45 +1,26 @@
-# Android Devkit documentation
+# Pico i.MX7 documentation
 
-This documentation separates reproducible evidence from working hypotheses for
-the Pico i.MX7 work. It does **not** claim that an image has been built or
-flashed successfully.
+The supported target is one inspected TechNexion PICO-PI-IMX7 running Ubuntu
+22.04 with kernel `5.15.71`. This directory records the facts and validation
+results behind the reproducible build workflow.
 
 ## Start here
 
-1. Read [workflow status and prerequisites](workflow-status.md). It states the
-   unresolved choices that must be made before a build or flash is attempted.
-2. Use the [Yocto workflow evidence](workflows/yocto.md) or the
-   [Ubuntu image and kernel evidence](workflows/ubuntu.md) only after checking
-   their cited source notes.
-3. Follow [safe flashing](workflows/flashing.md) for the recorded UUU process;
-   it deliberately requires an explicit device and artifact confirmation.
-4. Phase 2 implementers must follow the
-   [workflow implementation contract](contracts/phase-2-workflow.md).
-5. Use the [fail-closed workflow helpers](workflow-helpers.md) only after all
-   selections in the workflow status are resolved and entered explicitly.
+- [Flash an eMMC image](../README.md) — the end-to-end operator flow, including
+  USB-boot jumper positions.
+- [Build and validate](../BUILD.md) — rebuild drivers, create an image, access
+  the target, and run the camera check.
+- [Platform](platform.md) — supported hardware, module set, and non-negotiable
+  workflow constraints.
 
-## Documentation map
+## Detailed records
 
-- [Workflow status and authority](workflow-status.md) — what is known, what is
-  only a report, and the blocking decisions.
-- [Fail-closed workflow helpers](workflow-helpers.md) — strict manifest setup,
-  individual helper commands, outputs, and guarded flashing behavior.
-- [Yocto workflow evidence](workflows/yocto.md) — recorded manifest, machine,
-  image, and Wi-Fi customization notes.
-- [Ubuntu image and kernel evidence](workflows/ubuntu.md) — recorded base-image,
-  config-extraction, Wi-Fi, and camera investigation notes.
-- [Pico i.MX7 tracked configurations](../configs/pico-imx7/README.md) — the
-  authoritative image extraction and the separately labeled derived build
-  input.
-- [Safe flashing](workflows/flashing.md) — UUU evidence and non-negotiable
-  target-selection safeguards.
-- [Alternative OS references](references/alternative-oses.md) — non-selected
-  research leads.
-- [Wi-Fi and camera evidence](references/components.md) — component-specific
-  facts, hypotheses, and gaps.
-- [Raw source notes](source-notes/index.md) — preserved provenance, not an approved
-  runbook.
+- [Ubuntu build evidence](reference/ubuntu-evidence.md) — image, kernel,
+  configuration, module, firmware, and image-creation identities.
+- [Camera validation](validation/camera.md) — corruption cause, corrected
+  drivers, target tests, and limits.
+- [Hardware-acceleration inventory](validation/acceleration.md) — verified
+  display/GPU devices and codec limitations.
 
-Every statement in the curated pages is qualified by a link to a raw source
-note. External URLs in those notes are leads to verify, not facts newly
-validated by this repository.
+Git history retains superseded research and earlier workflow notes; this
+location contains only the current supported Ubuntu workflow.

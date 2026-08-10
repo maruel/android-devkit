@@ -61,8 +61,8 @@ command with `SSH_TECHNEXION_TIMEOUT_SECONDS=300`.
 The validated camera is `/dev/video1`. A bare `v4l2-ctl --set-fmt-video`
 request now configures the selected sensor mode and supports bounded 1280×720
 YUYV capture; the corrected prebuilt set includes `mx6s_capture.ko` for safe
-stream teardown. See [the camera investigation](docs/camera-investigation.md)
-for target evidence and [hardware acceleration](docs/hardware-acceleration.md)
+stream teardown. See [camera validation](docs/validation/camera.md) for
+target evidence and [hardware acceleration](docs/validation/acceleration.md)
 for the separate PxP/codec inventory.
 
 ## Build an image from rebuilt modules
@@ -101,5 +101,5 @@ sudo apt install --no-install-recommends curl unzip
 ./flash-emmc.sh
 ```
 
-See [the detailed Ubuntu workflow](docs/workflows/ubuntu.md) for provenance,
+See [Ubuntu build evidence](docs/reference/ubuntu-evidence.md) for provenance,
 configuration extraction, and validation details.
