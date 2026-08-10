@@ -128,6 +128,7 @@ grep -Fx "boot_dtb_sha256=$(sha256_file "$boot_dtb")" "$module_record" >/dev/nul
 declare -a module_names=(
   'brcmutil.ko'
   'brcmfmac.ko'
+  'mx6s_capture.ko'
   'mxc_v4l2_capture.ko'
   'v4l2-int-device.ko'
   'mxc_mipi_csi.ko'
@@ -136,6 +137,7 @@ declare -a module_names=(
 declare -a module_destinations=(
   'kernel/drivers/net/wireless/broadcom/brcm80211/brcmutil/brcmutil.ko'
   'kernel/drivers/net/wireless/broadcom/brcm80211/brcmfmac/brcmfmac.ko'
+  'kernel/drivers/media/platform/mxc/capture/mx6s_capture.ko'
   'kernel/drivers/media/platform/mxc/capture/mxc_v4l2_capture.ko'
   'kernel/drivers/media/platform/mxc/capture/v4l2-int-device.ko'
   'kernel/drivers/media/platform/mxc/capture/mxc_mipi_csi.ko'

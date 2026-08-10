@@ -54,6 +54,8 @@ output_dir=""
 script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir
 brcm_dts="$script_dir/../configs/pico-imx7/imx7d-pico-pi-brcm.dts"
+mx6s_stream_close_patch="$script_dir/../patches/pico-imx7/mx6s-csi-stream-close.patch"
+ov5645_mode_sync_patch="$script_dir/../patches/pico-imx7/ov5645-v4l2-mode-sync.patch"
 
 while (($# > 0)); do
   case "$1" in
@@ -82,10 +84,12 @@ done
   fail '--source-checkout must name a non-symlink directory'
 require_absolute_regular_file '--prepared-config' "$prepared_config"
 require_absolute_regular_file 'Broadcom hybrid device tree' "$brcm_dts"
+require_absolute_regular_file 'MX6S CSI stream-close patch' "$mx6s_stream_close_patch"
+require_absolute_regular_file 'OV5645 V4L2 mode synchronization patch' "$ov5645_mode_sync_patch"
 [[ ! -e "$output_dir" && ! -L "$output_dir" ]] ||
   fail "refusing to overwrite existing output directory: $output_dir"
 
-for required_command in awk dirname env git grep install make mkdir readelf sed sha256sum strings tar wc; do
+for required_command in awk dirname env git grep install make mkdir patch readelf sed sha256sum strings tar wc; do
   require_command "$required_command"
 done
 [[ -x "$CROSS_GCC" && ! -L "$CROSS_GCC" ]] ||
@@ -112,6 +116,12 @@ mkdir -- "$source_stage" "$build_dir" "$modules_dir" "$boot_dir"
 git -C "$source_checkout" archive --format=tar "$KERNEL_COMMIT" |
   tar -xf - -C "$source_stage"
 [[ ! -d "$source_stage/.git" ]] || fail 'Git-free source staging unexpectedly contains .git metadata'
+patch --batch --forward --fuzz=0 -p1 --directory="$source_stage" \
+  --input="$mx6s_stream_close_patch" ||
+  fail 'MX6S CSI stream-close patch did not apply exactly'
+patch --batch --forward --fuzz=0 -p1 --directory="$source_stage" \
+  --input="$ov5645_mode_sync_patch" ||
+  fail 'OV5645 V4L2 mode synchronization patch did not apply exactly'
 install -m 0644 -- "$prepared_config" "$build_dir/.config"
 install -m 0644 -- "$brcm_dts" "$source_stage/arch/arm/boot/dts/imx7d-pico-pi-brcm.dts"
 
@@ -134,6 +144,7 @@ kernelrelease="$("${build_environment[@]}" "${make_command[@]}" -s kernelrelease
 declare -a module_paths=(
   'drivers/net/wireless/broadcom/brcm80211/brcmutil/brcmutil.ko'
   'drivers/net/wireless/broadcom/brcm80211/brcmfmac/brcmfmac.ko'
+  'drivers/media/platform/mxc/capture/mx6s_capture.ko'
   'drivers/media/platform/mxc/capture/mxc_v4l2_capture.ko'
   'drivers/media/platform/mxc/capture/v4l2-int-device.ko'
   'drivers/media/platform/mxc/capture/mxc_mipi_csi.ko'

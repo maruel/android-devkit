@@ -30,8 +30,10 @@ TechNexion kernel commit `9339d9595f0d5192cf154b6fe6b98f43e8226fe8`.
   `ov5645_camera_mipi_v2.ko`, direct GPIO1_4 power-down, GPIO1_5 reset, and
   CLKO1. The baseline DTB uses a 240 MHz MIPI CSI receiver clock with
   `csis-wclk`; do not change it without new primary evidence. Capture at
-  `/dev/video1` is not yet validated: direct retesting produced corrupted
-  frames and unstable repeated capture. See `docs/camera-investigation.md`.
+  `/dev/video1` is validated at 1280×720 YUYV after the tracked OV5645
+  mode-sync and MX6S stream-close patches. Keep `mx6s_capture.ko` in the
+  supported prebuilt set: it prevents the observed close-time camera lockup.
+  See `docs/camera-investigation.md`.
 - For an on-device investigation explicitly requested by the user, permission is
   granted to install software, change device state, capture screenshots, and
   reboot the device as needed. Otherwise, ask before running `apt-get install`

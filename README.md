@@ -46,7 +46,9 @@ Install the kernel build tools, then run the builder. GCC 12 is required; GCC
 14 does not build this tree.
 
 ```bash
-sudo apt install --no-install-recommends bc dwarves gcc-12-arm-linux-gnueabi libelf-dev
+sudo apt install --no-install-recommends \
+  bc bison build-essential dwarves flex gcc-12-arm-linux-gnueabi \
+  git libelf-dev libssl-dev
 ./build-drivers.sh
 ```
 
@@ -69,17 +71,12 @@ command with `SSH_TECHNEXION_TIMEOUT_SECONDS=300`.
 
 ## Verify the camera on the target
 
-The camera binds at `/dev/video1`, but capture is not yet validated: recent
-on-device tests produced corrupted frames and unstable repeated capture. See
-[the current investigation](docs/camera-investigation.md) before testing.
-List its modes and use this bounded diagnostic:
-
-```bash
-v4l2-ctl -d /dev/video1 --list-formats-ext
-timeout 15 v4l2-ctl -d /dev/video1 \
-  --set-fmt-video=width=640,height=480,pixelformat=YUYV \
-  --stream-mmap=3 --stream-count=30 --stream-to=capture.raw
-```
+The validated camera is `/dev/video1`. A bare `v4l2-ctl --set-fmt-video`
+request now configures the selected sensor mode and supports bounded 1280×720
+YUYV capture; the corrected prebuilt set includes `mx6s_capture.ko` for safe
+stream teardown. See [the camera investigation](docs/camera-investigation.md)
+for target evidence and [hardware acceleration](docs/hardware-acceleration.md)
+for the separate PxP/codec inventory.
 
 ## Build an image from rebuilt modules
 

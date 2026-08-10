@@ -160,7 +160,8 @@ CAM-OV5645 GPIO wiring. The baseline MIPI CSI receiver configuration is
 640×480 through 2592×1944. The replacement avoids the non-responsive PCA9554
 path inherited from the Ubuntu OV5640 configuration.
 
-Camera capture is **not validated**: subsequent direct testing produced black
-or corrupted frames and unstable repeated capture. The former 30-frame VGA
-success claim is superseded by the [current camera
-investigation](../camera-investigation.md).
+Camera capture is validated at 1280×720 YUYV with the tracked OV5645
+mode-sync and MX6S stream-close patches. The prebuilt set now has seven modules,
+including `mx6s_capture.ko`; the target passed a 300-frame, 10-second capture
+soak at 30 fps. See the [current camera
+investigation](../camera-investigation.md) for the exact evidence and bounds.
