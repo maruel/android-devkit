@@ -42,8 +42,9 @@ These settings are deliberately feature-restrictive for the target's vetted
 internal sites. They apply when Firefox next starts, but do not eliminate its
 roughly 85 MiB single-page baseline.
 
-The script also masks unused ModemManager, udisks/automount, and Snap units,
-and disables rsyslog. After the change and reboot, available RAM rose from
+The script also masks Bluetooth/Blueman, ModemManager, udisks/automount, and
+Snap units, disables rsyslog, and prevents the Blueman desktop applet from
+starting. After the change and reboot, available RAM rose from
 about 210 MiB to about 278 MiB in comparable idle observations. NetworkManager,
 Wi-Fi, PulseAudio, and WebRTC remain enabled.
 

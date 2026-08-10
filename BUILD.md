@@ -77,8 +77,9 @@ installs a fixed low-memory policy: `vm.swappiness=10` immediately, and a
 system preferences that reduce content processes/cache and disable saved
 logins, form fill, spellcheck, telemetry, new-tab services, notifications,
 and WebGL. WebRTC remains enabled for camera use. It also disables unused
-ModemManager, udisks/automount, Snap services, and rsyslog. It deliberately
-does not reset active swap, so reboot after configuring the board. The inspected
+Bluetooth and Blueman, ModemManager, udisks/automount, Snap services, and
+rsyslog. It deliberately does not reset active swap, so reboot after configuring
+the board. The inspected
 Ubuntu target permits this noninteractive `sudo` invocation:
 
 ```bash

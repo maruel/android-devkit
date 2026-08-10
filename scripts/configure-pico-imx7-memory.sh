@@ -8,7 +8,10 @@ readonly sysctl_config='/etc/sysctl.d/90-pico-imx7-memory.conf'
 readonly zram_initializer='/usr/local/sbin/pico-imx7-zram-init'
 readonly zram_drop_in='/etc/systemd/system/zram-config.service.d/10-pico-imx7-memory.conf'
 readonly firefox_preferences='/etc/firefox/syspref.js'
+readonly blueman_autostart='/home/ubuntu/.config/autostart/blueman.desktop'
 readonly -a masked_services=(
+  bluetooth.service
+  blueman-mechanism.service
   ModemManager.service
   udisks2.service
   snapd.service
@@ -43,7 +46,7 @@ require_regular_or_missing_file() {
 
 (($# == 0)) || usage
 [[ "$(id -u)" == 0 ]] || fail 'run this script as root'
-for command in awk cat dirname install mkdir mktemp modprobe mkswap mv rm swapon sysctl systemctl tr; do
+for command in awk cat chown dirname install mkdir mktemp modprobe mkswap mv rm swapon sysctl systemctl tr; do
   require_command "$command"
 done
 
@@ -61,10 +64,13 @@ esac
 
 require_directory /etc/sysctl.d
 require_directory /etc/firefox
+require_directory /home/ubuntu/.config
 require_directory /usr/local/sbin
 mkdir -p -- /etc/systemd/system/zram-config.service.d
+mkdir -p -- /home/ubuntu/.config/autostart
 require_directory /etc/systemd/system/zram-config.service.d
-for destination in "$sysctl_config" "$zram_initializer" "$zram_drop_in" "$firefox_preferences"; do
+require_directory /home/ubuntu/.config/autostart
+for destination in "$sysctl_config" "$zram_initializer" "$zram_drop_in" "$firefox_preferences" "$blueman_autostart"; do
   require_regular_or_missing_file "$destination"
 done
 
@@ -106,6 +112,11 @@ cat > "$work_dir/zram-config.conf" <<EOF
 ExecStart=
 ExecStart=$zram_initializer
 EOF
+cat > "$work_dir/blueman.desktop" <<'EOF'
+[Desktop Entry]
+Type=Application
+Hidden=true
+EOF
 cat > "$work_dir/firefox-syspref.js" <<'EOF'
 // Managed by configure-pico-imx7-memory.sh.
 pref("dom.ipc.processCount", 1);
@@ -134,6 +145,8 @@ EOF
 install -m 0644 -- "$work_dir/sysctl.conf" "$sysctl_config"
 install -m 0755 -- "$work_dir/zram-init" "$zram_initializer"
 install -m 0644 -- "$work_dir/zram-config.conf" "$zram_drop_in"
+install -m 0644 -- "$work_dir/blueman.desktop" "$blueman_autostart"
+chown ubuntu:ubuntu -- "$blueman_autostart"
 install -m 0644 -- "$work_dir/firefox-syspref.js" "$firefox_preferences"
 sysctl -w "vm.swappiness=$swappiness" >/dev/null
 systemctl daemon-reload
