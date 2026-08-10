@@ -63,7 +63,9 @@ The password is `ubuntu`; it is intentionally non-sensitive and may be used or
 recorded in clear text for this inspected development target. Every invocation
 is bounded to 120 seconds (including connection setup) and kills a stuck SSH
 client after a 10-second grace period. Override the limit for a known long
-command with `SSH_TECHNEXION_TIMEOUT_SECONDS=300`.
+command with `SSH_TECHNEXION_TIMEOUT_SECONDS=300`. After a reboot, wait at
+least 40 seconds before reconnecting; [`scripts/reboot-technexion.sh`](scripts/reboot-technexion.sh)
+performs that wait and then checks SSH readiness.
 
 ## Configure target memory
 
@@ -90,7 +92,7 @@ Ubuntu target permits this noninteractive `sudo` invocation:
 ```bash
 ./scripts/ssh-technexion.sh sudo -n bash -s \
   < scripts/configure-pico-imx7-memory.sh
-./scripts/ssh-technexion.sh sudo -n reboot
+./scripts/reboot-technexion.sh
 ```
 
 ## Verify the camera on the target

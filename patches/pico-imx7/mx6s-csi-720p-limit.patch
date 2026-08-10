@@ -1,0 +1,46 @@
+--- a/drivers/media/platform/mxc/capture/mx6s_capture.c
++++ b/drivers/media/platform/mxc/capture/mx6s_capture.c
+@@ -233,6 +233,9 @@
+ /*
+  * Basic structures
+  */
++#define MX6S_CAPTURE_MAX_WIDTH  1280
++#define MX6S_CAPTURE_MAX_HEIGHT 720
++
+ struct mx6s_fmt {
+ 	char  name[32];
+ 	u32   fourcc;		/* v4l2 format id */
+@@ -1427,6 +1430,12 @@
+ 			f->fmt.pix.width, f->fmt.pix.height);
+ 		return -EINVAL;
+ 	}
++	if (f->fmt.pix.width > MX6S_CAPTURE_MAX_WIDTH ||
++	    f->fmt.pix.height > MX6S_CAPTURE_MAX_HEIGHT) {
++		dev_err(csi_dev->dev, "width %d, height %d exceeds the 720p limit.\n",
++			f->fmt.pix.width, f->fmt.pix.height);
++		return -EINVAL;
++	}
+ 
+ 	v4l2_fill_mbus_format(&format.format, pix, fmt->mbus_code);
+ 	ret = v4l2_subdev_call(sd, pad, set_fmt, NULL, &format);
+@@ -1634,6 +1643,10 @@
+ 	if (ret)
+ 		return ret;
+ 
++	if (fse.max_width > MX6S_CAPTURE_MAX_WIDTH ||
++	    fse.max_height > MX6S_CAPTURE_MAX_HEIGHT)
++		return -EINVAL;
++
+ 	if (fse.min_width == fse.max_width &&
+ 	    fse.min_height == fse.max_height) {
+ 		fsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
+@@ -1671,6 +1684,9 @@
+ 	if (fmt->pixelformat != interval->pixel_format)
+ 		return -EINVAL;
+ 	fie.code = fmt->mbus_code;
++	if (interval->width > MX6S_CAPTURE_MAX_WIDTH ||
++	    interval->height > MX6S_CAPTURE_MAX_HEIGHT)
++		return -EINVAL;
+ 
+ 	ret = v4l2_subdev_call(sd, pad, enum_frame_interval, NULL, &fie);
+ 	if (ret)

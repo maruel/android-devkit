@@ -80,6 +80,24 @@ frames from that session are expected. They still contained stable scene detail
 and none of the prior corruption. Captures and contact sheets stay ignored in
 `artifacts/device-investigation/`.
 
+## Browser Web API
+
+A local `getUserMedia()` page in Firefox 125 requested an ideal 640×480 camera
+stream. The camera image was visibly displayed on the target during this
+investigation, so the Web API can produce a working preview. My automated
+frame-change check was not a valid basis for rejecting that result: Firefox 125
+lacks `HTMLVideoElement.requestVideoFrameCallback()`, and the fallback polling
+check did not reliably distinguish a live display from its own page/runtime
+failure.
+
+Firefox probes unsupported RGB V4L2 formats before selecting YUYV. Two
+temporary MX6S candidates that converted those probes to YUYV (and one that
+also hid modes above 1280×720) were not stable across repeated automated
+Firefox starts. They were removed and the validated `mx6s_capture.ko` restored;
+it again passed a 300-frame 1280×720 soak. Thus the observed Firefox preview is
+encouraging, but repeatable browser start/stop behaviour has not yet been
+validated. It should not be described as unsupported.
+
 ## Cheese preview
 
 Cheese 41 initially selected its saved default 2592×1944 photo and video

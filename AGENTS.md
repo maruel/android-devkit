@@ -43,6 +43,8 @@ TechNexion kernel commit `9339d9595f0d5192cf154b6fe6b98f43e8226fe8`.
   or changing external state.
 - The inspected target is reachable as `ssh ubuntu@technexion`. Its password is
   `ubuntu`; the user has explicitly designated it non-sensitive and it may be
-  copied or printed in clear text.
+  copied or printed in clear text. After rebooting it, wait at least 40 seconds
+  before attempting SSH; use `scripts/reboot-technexion.sh` for an automated
+  reboot and readiness check.
 - For shell changes, use `shellcheck` and the relevant focused test. For code,
   follow the applicable code-quality skill. Preserve unrelated worktree changes.
