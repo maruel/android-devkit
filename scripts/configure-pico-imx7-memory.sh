@@ -14,6 +14,7 @@ readonly -a masked_services=(
   blueman-mechanism.service
   ModemManager.service
   udisks2.service
+  rsyslog.service
   snapd.service
   snapd.socket
   snapd.seeded.service
@@ -27,7 +28,7 @@ fail() {
 }
 
 usage() {
-  printf '%s\n' "usage: $(basename -- "$0")" >&2
+  printf '%s\n' "usage: $(basename -- "$0") [--image-root /absolute/path]" >&2
   exit 2
 }
 
@@ -44,37 +45,94 @@ require_regular_or_missing_file() {
     fail "destination must be a regular file or absent: $1"
 }
 
-(($# == 0)) || usage
-[[ "$(id -u)" == 0 ]] || fail 'run this script as root'
-for command in awk cat chown dirname install mkdir mktemp modprobe mkswap mv rm swapon sysctl systemctl tr; do
+root_path() {
+  local path="$1"
+  [[ "$path" == /* ]] || fail "policy path must be absolute: $path"
+  if [[ -n "$image_root" ]]; then
+    printf '%s%s\n' "$image_root" "$path"
+  else
+    printf '%s\n' "$path"
+  fi
+}
+
+install_mask() {
+  local destination="$1"
+  if [[ -e "$destination" && ! -L "$destination" ]]; then
+    fail "mask destination is not a symlink or absent: $destination"
+  fi
+  ln -sfn -- /dev/null "$destination"
+}
+
+image_root=''
+if (($# == 0)); then
+  mode='target'
+elif [[ $# == 2 && $1 == --image-root ]]; then
+  mode='image'
+  image_root="$2"
+  [[ "$image_root" == /* ]] || fail '--image-root must be absolute'
+  require_directory "$image_root"
+else
+  usage
+fi
+readonly mode image_root
+
+for command in cat chown dirname install ln mkdir mktemp rm tr; do
   require_command "$command"
 done
+if [[ "$mode" == target ]]; then
+  for command in modprobe mkswap swapon sysctl systemctl; do
+    require_command "$command"
+  done
+fi
 
-memory_kib="$(awk '$1 == "MemTotal:" { print $2; exit }' /proc/meminfo)"
-[[ "$memory_kib" =~ ^[0-9]+$ ]] || fail 'could not determine installed memory'
-((memory_kib >= zram_size_mib * 1024)) ||
-  fail "${zram_size_mib} MiB zram exceeds installed memory"
+if [[ "$mode" == target ]]; then
+  [[ "$(id -u)" == 0 ]] || fail 'run this script as root'
+  require_command awk
+  memory_kib="$(awk '$1 == "MemTotal:" { print $2; exit }' /proc/meminfo)"
+  [[ "$memory_kib" =~ ^[0-9]+$ ]] || fail 'could not determine installed memory'
+  ((memory_kib >= zram_size_mib * 1024)) ||
+    fail "${zram_size_mib} MiB zram exceeds installed memory"
+  [[ -r /sys/block/zram0/comp_algorithm ]] || fail 'zram0 compression settings are not available'
+  available_algorithms="$(tr -d '[]' < /sys/block/zram0/comp_algorithm)"
+  case " $available_algorithms " in
+    *" $zram_algorithm "*) ;;
+    *) fail "zram algorithm is unavailable: $zram_algorithm (available:$available_algorithms)" ;;
+  esac
+fi
 
-[[ -r /sys/block/zram0/comp_algorithm ]] || fail 'zram0 compression settings are not available'
-available_algorithms="$(tr -d '[]' < /sys/block/zram0/comp_algorithm)"
-case " $available_algorithms " in
-  *" $zram_algorithm "*) ;;
-  *) fail "zram algorithm is unavailable: $zram_algorithm (available:$available_algorithms)" ;;
-esac
+sysctl_destination="$(root_path "$sysctl_config")"
+zram_initializer_destination="$(root_path "$zram_initializer")"
+zram_drop_in_destination="$(root_path "$zram_drop_in")"
+firefox_preferences_destination="$(root_path "$firefox_preferences")"
+blueman_autostart_destination="$(root_path "$blueman_autostart")"
+readonly sysctl_destination zram_initializer_destination zram_drop_in_destination
+readonly firefox_preferences_destination blueman_autostart_destination
 
-require_directory /etc/sysctl.d
-require_directory /etc/firefox
-require_directory /home/ubuntu/.config
-require_directory /usr/local/sbin
-mkdir -p -- /etc/systemd/system/zram-config.service.d
-mkdir -p -- /home/ubuntu/.config/autostart
-require_directory /etc/systemd/system/zram-config.service.d
-require_directory /home/ubuntu/.config/autostart
-for destination in "$sysctl_config" "$zram_initializer" "$zram_drop_in" "$firefox_preferences" "$blueman_autostart"; do
+for directory in \
+  "$(dirname -- "$sysctl_destination")" \
+  "$(dirname -- "$zram_initializer_destination")" \
+  "$(dirname -- "$zram_drop_in_destination")" \
+  "$(dirname -- "$firefox_preferences_destination")" \
+  "$(dirname -- "$blueman_autostart_destination")"; do
+  mkdir -p -- "$directory"
+  require_directory "$directory"
+done
+for destination in "$sysctl_destination" "$zram_initializer_destination" \
+  "$zram_drop_in_destination" "$firefox_preferences_destination" \
+  "$blueman_autostart_destination"; do
   require_regular_or_missing_file "$destination"
 done
 
-work_dir="$(mktemp -d /tmp/pico-imx7-memory.XXXXXX)"
+for service in "${masked_services[@]}"; do
+  mask_destination="$(root_path "/etc/systemd/system/$service")"
+  install_mask "$mask_destination"
+done
+
+work_parent='/tmp'
+if [[ "$mode" == image ]]; then
+  work_parent="$image_root"
+fi
+work_dir="$(mktemp -d "$work_parent/.pico-imx7-memory.XXXXXX")"
 readonly work_dir
 cleanup() {
   rm -rf -- "$work_dir"
@@ -142,15 +200,20 @@ pref("dom.webnotifications.enabled", false);
 pref("webgl.disabled", true);
 EOF
 
-install -m 0644 -- "$work_dir/sysctl.conf" "$sysctl_config"
-install -m 0755 -- "$work_dir/zram-init" "$zram_initializer"
-install -m 0644 -- "$work_dir/zram-config.conf" "$zram_drop_in"
-install -m 0644 -- "$work_dir/blueman.desktop" "$blueman_autostart"
-chown ubuntu:ubuntu -- "$blueman_autostart"
-install -m 0644 -- "$work_dir/firefox-syspref.js" "$firefox_preferences"
+install -m 0644 -- "$work_dir/sysctl.conf" "$sysctl_destination"
+install -m 0755 -- "$work_dir/zram-init" "$zram_initializer_destination"
+install -m 0644 -- "$work_dir/zram-config.conf" "$zram_drop_in_destination"
+install -m 0644 -- "$work_dir/blueman.desktop" "$blueman_autostart_destination"
+install -m 0644 -- "$work_dir/firefox-syspref.js" "$firefox_preferences_destination"
+
+if [[ "$mode" == image ]]; then
+  printf 'staged Pico i.MX7 memory policy under %s\n' "$image_root"
+  exit 0
+fi
+
+chown ubuntu:ubuntu -- "$blueman_autostart_destination"
 sysctl -w "vm.swappiness=$swappiness" >/dev/null
 systemctl daemon-reload
-systemctl disable --now rsyslog.service
 systemctl mask --now "${masked_services[@]}"
 printf 'configured Firefox low-memory preferences, swappiness=%s, %s MiB %s zram, and disabled unused services; reboot to apply zram\n' \
   "$swappiness" "$zram_size_mib" "$zram_algorithm"

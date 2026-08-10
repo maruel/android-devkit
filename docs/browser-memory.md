@@ -26,9 +26,13 @@ swappiness is the useful control; Firefox low-memory preferences (one renderer,
 disabled Fission, and an 8 MiB memory cache) did not materially lower its
 single-page PSS.
 
+New images created by `make-image.sh` include the selected persistent policy:
+`vm.swappiness=10` and a 192 MiB `lzo-rle` zram device. The image creator
+verifies every policy file and records its hashes in provenance.
+
 [`scripts/configure-pico-imx7-memory.sh`](../scripts/configure-pico-imx7-memory.sh)
-installs the selected persistent policy: `vm.swappiness=10` and a 192 MiB
-`lzo-rle` zram device after reboot. It does not reset active swap while running.
+repairs an already-flashed target with the same policy. It does not reset active
+swap while running.
 
 ## Firefox feature profile
 

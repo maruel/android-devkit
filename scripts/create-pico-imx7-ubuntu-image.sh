@@ -56,6 +56,11 @@ module_vermagic() {
   printf '%s\n' "$values"
 }
 
+script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+readonly script_dir
+memory_policy_script="$script_dir/configure-pico-imx7-memory.sh"
+readonly memory_policy_script
+
 base_image=""
 module_build=""
 output_image=""
@@ -111,6 +116,8 @@ require_absolute_regular_file '--module-build/modules.record' "$module_record"
 [[ -d "$modules_dir" && ! -L "$modules_dir" ]] || fail 'validated module directory is missing or symlinked'
 boot_dtb="$module_build/boot/imx7d-pico-pi.dtb"
 require_absolute_regular_file '--module-build/boot/imx7d-pico-pi.dtb' "$boot_dtb"
+require_absolute_regular_file 'memory policy installer' "$memory_policy_script"
+[[ -x "$memory_policy_script" ]] || fail 'memory policy installer is not executable'
 for required_line in \
   'format=pico-imx7-ubuntu-22.04-module-build-v1' \
   "kernel_commit=$KERNEL_COMMIT" \
@@ -174,6 +181,33 @@ for firmware_name in 'brcmfmac4339-sdio.txt' 'brcmfmac4339-sdio.fsl,pico-imx7d.t
     fail "AP6335 NVRAM checksum does not match the pinned source: $firmware_name"
 done
 
+declare -a memory_policy_paths=(
+  '/etc/sysctl.d/90-pico-imx7-memory.conf'
+  '/usr/local/sbin/pico-imx7-zram-init'
+  '/etc/systemd/system/zram-config.service.d/10-pico-imx7-memory.conf'
+  '/etc/firefox/syspref.js'
+  '/home/ubuntu/.config/autostart/blueman.desktop'
+)
+declare -a memory_policy_names=(
+  'sysctl'
+  'zram_initializer'
+  'zram_drop_in'
+  'firefox_preferences'
+  'blueman_autostart'
+)
+declare -a masked_services=(
+  'bluetooth.service'
+  'blueman-mechanism.service'
+  'ModemManager.service'
+  'udisks2.service'
+  'rsyslog.service'
+  'snapd.service'
+  'snapd.socket'
+  'snapd.seeded.service'
+  'snapd.autoimport.service'
+  'snapd.apparmor.service'
+)
+
 # Prefer an unprivileged libguestfs appliance. Some Ubuntu hosts make their
 # kernel unreadable to regular users, in which case retry the failed guestfish
 # operation with the smallest necessary elevation.
@@ -217,11 +251,13 @@ cleanup() {
 trap cleanup EXIT
 working_image="$temporary/image.raw"
 stage_root="$temporary/root"
+policy_root="$temporary/policy"
 archive="$temporary/modules.tar"
 firmware_archive="$temporary/firmware.tar"
+policy_archive="$temporary/policy.tar"
 uenv="$temporary/uEnv.txt"
 updated_uenv="$temporary/uEnv.txt.updated"
-mkdir -- "$stage_root"
+mkdir -- "$stage_root" "$policy_root"
 cp --reflink=auto --preserve=mode,timestamps -- "$base_image" "$working_image"
 guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda2 / : tar-out /lib/modules "$archive"
 restore_user_ownership "$archive"
@@ -258,11 +294,19 @@ for index in "${!firmware_names[@]}"; do
   mkdir -p -- "$(dirname -- "$destination")"
   cp --preserve=mode -- "$firmware_dir/${firmware_names[$index]}" "$destination"
 done
+"$memory_policy_script" --image-root "$policy_root"
 "$depmod_command" -b "$stage_root" "$TARGET_RELEASE"
 tar -C "$stage_root/lib/modules" -cf "$archive" .
 tar -C "$stage_root/lib/firmware" -cf "$firmware_archive" .
+tar -C "$policy_root" -cf "$policy_archive" .
 guestfish_as_root --rw -a "$working_image" run : mount /dev/sda2 / : tar-in "$archive" /lib/modules
 guestfish_as_root --rw -a "$working_image" run : mount /dev/sda2 / : tar-in "$firmware_archive" /lib/firmware
+guestfish_as_root --rw -a "$working_image" run : mount /dev/sda2 / : tar-in "$policy_archive" / \
+  : chown 0 0 /etc/sysctl.d/90-pico-imx7-memory.conf \
+  : chown 0 0 /usr/local/sbin/pico-imx7-zram-init \
+  : chown 0 0 /etc/systemd/system/zram-config.service.d/10-pico-imx7-memory.conf \
+  : chown 0 0 /etc/firefox/syspref.js \
+  : chown 1000 1000 /home/ubuntu/.config/autostart/blueman.desktop
 guestfish_as_root --rw -a "$working_image" run : mount /dev/sda1 / : upload "$boot_dtb" /imx7d-pico-pi.dtb : upload "$updated_uenv" /uEnv.txt
 for index in "${!module_names[@]}"; do
   image_module_sha="$(guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda2 / : checksum sha256 "/lib/modules/$TARGET_RELEASE/${module_destinations[$index]}")"
@@ -274,6 +318,19 @@ for index in "${!firmware_names[@]}"; do
   [[ "$image_firmware_sha" == "$(sha256_file "$firmware_dir/${firmware_names[$index]}")" ]] ||
     fail "image verification failed for ${firmware_names[$index]}"
 done
+for index in "${!memory_policy_paths[@]}"; do
+  policy_path="${memory_policy_paths[$index]}"
+  image_policy_sha="$(guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda2 / : checksum sha256 "$policy_path")"
+  [[ "$image_policy_sha" == "$(sha256_file "$policy_root$policy_path")" ]] ||
+    fail "image verification failed for memory policy ${memory_policy_names[$index]}"
+done
+for service in "${masked_services[@]}"; do
+  mask_path="/etc/systemd/system/$service"
+  [[ "$(guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda2 / : is-symlink "$mask_path")" == true ]] ||
+    fail "memory policy mask is missing: $service"
+  [[ "$(guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda2 / : readlink "$mask_path")" == /dev/null ]] ||
+    fail "memory policy mask is invalid: $service"
+done
 image_boot_dtb_sha="$(guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda1 / : checksum sha256 /imx7d-pico-pi.dtb)"
 [[ "$image_boot_dtb_sha" == "$(sha256_file "$boot_dtb")" ]] ||
   fail 'image verification failed for the Broadcom boot device tree'
@@ -282,13 +339,20 @@ printf '%s\n' "$image_uenv" | grep -Fx 'wifi_module=brcm' >/dev/null ||
   fail 'image verification failed for the Broadcom boot selection'
 image_sha="$(sha256_file "$working_image")"
 mv -T -- "$working_image" "$output_image"
-printf '%s\n' \
-  'format=pico-imx7-ubuntu-22.04-derived-image-v1' \
-  "base_image_sha256=$BASE_IMAGE_SHA256" \
-  "module_build_record_sha256=$(sha256_file "$module_record")" \
-  "ap6335_firmware_sha256=$AP6335_FIRMWARE_SHA256" \
-  "ap6335_nvram_sha256=$AP6335_NVRAM_SHA256" \
-  "boot_dtb_sha256=$(sha256_file "$boot_dtb")" \
-  "kernelrelease=$TARGET_RELEASE" \
-  "derived_image_sha256=$image_sha" > "$output_image.provenance"
+declare -a provenance_lines=(
+  'format=pico-imx7-ubuntu-22.04-derived-image-v1'
+  "base_image_sha256=$BASE_IMAGE_SHA256"
+  "module_build_record_sha256=$(sha256_file "$module_record")"
+  "ap6335_firmware_sha256=$AP6335_FIRMWARE_SHA256"
+  "ap6335_nvram_sha256=$AP6335_NVRAM_SHA256"
+  "boot_dtb_sha256=$(sha256_file "$boot_dtb")"
+  "kernelrelease=$TARGET_RELEASE"
+)
+for index in "${!memory_policy_paths[@]}"; do
+  provenance_lines+=(
+    "memory_policy_${memory_policy_names[$index]}_sha256=$(sha256_file "$policy_root${memory_policy_paths[$index]}")"
+  )
+done
+provenance_lines+=("derived_image_sha256=$image_sha")
+printf '%s\n' "${provenance_lines[@]}" > "$output_image.provenance"
 printf 'created verified Pico i.MX7 Ubuntu flash image: %s\n' "$output_image"

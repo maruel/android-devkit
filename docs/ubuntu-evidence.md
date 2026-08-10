@@ -17,7 +17,9 @@ Pico releases or arbitrary ARM kernels.
 
 `./fetch-base-image.sh` and `./make-image.sh` are the normal wrappers. The
 image-creation script refuses an incorrect base hash, unvalidated module set,
-firmware, device tree, image contents, or provenance record.
+firmware, device tree, image contents, or provenance record. It also stages the
+tracked low-memory policy into every new root filesystem, verifies its files and
+service masks, and records policy-file hashes in provenance.
 
 ## Configuration provenance
 

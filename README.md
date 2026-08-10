@@ -14,6 +14,10 @@ sudo apt install --no-install-recommends curl kmod libguestfs-tools unzip xz-uti
 ./fetch-emmc-boot-assets.sh
 ```
 
+The generated image includes the validated camera stack and the low-memory
+policy from [`scripts/configure-pico-imx7-memory.sh`](scripts/configure-pico-imx7-memory.sh).
+See [BUILD.md](BUILD.md) for its exact contents and existing-target configuration.
+
 Power the board off before moving the caps. Set the jumpers to Serial Boot Loader mode, connect the USB-C
 OTG/power port, and confirm `lsusb -d 15a2:0076` reports the expected device.
 
