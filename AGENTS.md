@@ -35,7 +35,8 @@ TechNexion kernel commit `9339d9595f0d5192cf154b6fe6b98f43e8226fe8`.
   supported prebuilt set: it prevents the observed close-time camera lockup.
   Keep the 192 MiB CMA reservation: a static 128 MiB CMA candidate completed
   one 720p soak but reset during a second; the 192 MiB baseline passed after
-  restoration. See `docs/camera.md`.
+  restoration. Cheese defaults to 2592×1944 and must be set to 1280×720 before
+  use. See `docs/camera.md`.
 - For an on-device investigation explicitly requested by the user, permission is
   granted to install software, change device state, capture screenshots, and
   reboot the device as needed. Otherwise, ask before running `apt-get install`

@@ -80,5 +80,41 @@ frames from that session are expected. They still contained stable scene detail
 and none of the prior corruption. Captures and contact sheets stay ignored in
 `artifacts/device-investigation/`.
 
+## Cheese preview
+
+Cheese 41 initially selected its saved default 2592×1944 photo and video
+resolution. It displayed one frame and then stopped updating; the target later
+reset under that unvalidated high-resolution capture. There were no MIPI CSI
+errors before the reset. The application must be restricted to the validated
+mode:
+
+```bash
+gsettings set org.gnome.Cheese photo-x-resolution 1280
+gsettings set org.gnome.Cheese photo-y-resolution 720
+gsettings set org.gnome.Cheese video-x-resolution 1280
+gsettings set org.gnome.Cheese video-y-resolution 720
+```
+
+After restarting Cheese, `/dev/video1` reported 1280×720 (1,843,200-byte
+frames), but its normal Clutter/Cogl preview still froze: two captures of the
+actual 620×480 preview window five seconds apart had zero changed pixels. A
+direct GStreamer source soak passed 300 1280×720 frames, so the capture path is
+not the cause.
+
+The working workaround forces Cogl through software rendering:
+
+```bash
+LIBGL_ALWAYS_SOFTWARE=1 CLUTTER_BACKEND=x11 COGL_DRIVER=gl \
+  cheese --device=/dev/video1
+```
+
+With that environment, the preview changed in all six five-second intervals of
+a 30-second sample. The likely bug is in the Vivante GPU driver's interaction
+with Cheese's Clutter/Cogl preview renderer, not in the camera driver: the
+camera produced 300 frames through GStreamer while the hardware-rendered preview
+was frozen. Software rendering costs about 125 MiB RSS and roughly one and a
+half CPU cores; do not run a heavy browser alongside it without observing
+available RAM and zram.
+
 The target retains 30-second watchdog and persistent-journal recovery settings
 from the investigation. Remove those deliberately if they are no longer wanted.
