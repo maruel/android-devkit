@@ -44,9 +44,10 @@ single selected delivery image. [Yocto source note](source-notes/YOCTO.md)
 - Determine the boot-image/SPL/U-Boot pairing and artifact format for the
   selected release. The recorded self-built SPL path is explicitly marked as
   not working. [flashing source note](source-notes/FLASHING.md)
-- The camera acceptance test is complete: the target binds
-  `ov5645_camera_mipi_v2` at `3-003c`, lists YUYV capture modes, and completed
-  a bounded 30-frame 640×480 capture. [Ubuntu workflow](workflows/ubuntu.md)
+- Camera acceptance remains blocked. The target binds
+  `ov5645_camera_mipi_v2` at `3-003c` and lists modes, but direct retesting
+  produced black or corrupted frames and unstable repeated capture. See the
+  [current camera investigation](camera-investigation.md).
 
 ## Prohibited assumptions
 

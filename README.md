@@ -52,10 +52,27 @@ sudo apt install --no-install-recommends bc dwarves gcc-12-arm-linux-gnueabi lib
 
 The scripts keep the kernel checkout and build output in `artifacts/`.
 
+## Access the inspected target
+
+Connect to the board with:
+
+```bash
+./scripts/ssh-technexion.sh
+```
+
+The helper uses `sshpass` to connect noninteractively to `ubuntu@technexion`.
+The password is `ubuntu`; it is intentionally non-sensitive and may be used or
+recorded in clear text for this inspected development target. Every invocation
+is bounded to 120 seconds (including connection setup) and kills a stuck SSH
+client after a 10-second grace period. Override the limit for a known long
+command with `SSH_TECHNEXION_TIMEOUT_SECONDS=300`.
+
 ## Verify the camera on the target
 
-The validated camera appears as `/dev/video1`. List its modes and capture 30
-VGA YUYV frames:
+The camera binds at `/dev/video1`, but capture is not yet validated: recent
+on-device tests produced corrupted frames and unstable repeated capture. See
+[the current investigation](docs/camera-investigation.md) before testing.
+List its modes and use this bounded diagnostic:
 
 ```bash
 v4l2-ctl -d /dev/video1 --list-formats-ext

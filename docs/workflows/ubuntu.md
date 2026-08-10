@@ -155,8 +155,12 @@ not merely an image-content check.
 ## Camera evidence
 
 The target uses `ov5645_camera_mipi_v2` at I²C `3-003c` with the PICO-PI
-CAM-OV5645 GPIO wiring. The MIPI CSI receiver remains at 240 MHz with
-`csis-wclk` enabled. `/dev/video1` enumerates YUYV modes from 640×480 through
-2592×1944; a bounded 30-frame 640×480 YUYV capture completed successfully.
-The replacement avoids the non-responsive PCA9554 path inherited from the
-Ubuntu OV5640 configuration.
+CAM-OV5645 GPIO wiring. The baseline MIPI CSI receiver configuration is
+240 MHz with `csis-wclk` enabled, and `/dev/video1` enumerates YUYV modes from
+640×480 through 2592×1944. The replacement avoids the non-responsive PCA9554
+path inherited from the Ubuntu OV5640 configuration.
+
+Camera capture is **not validated**: subsequent direct testing produced black
+or corrupted frames and unstable repeated capture. The former 30-frame VGA
+success claim is superseded by the [current camera
+investigation](../camera-investigation.md).

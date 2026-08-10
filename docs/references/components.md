@@ -23,7 +23,9 @@ direct GPIO power-down/reset wiring at I²C `3-003c` and the
 `ov5645_mipi_v2` driver.
 
 The delivered hybrid DTB uses that OV5645 wiring while retaining the 5.15
-MIPI-CSI receiver's 240 MHz clock and `csis-wclk` setting. The target now binds
-`ov5645_mipi_v2` at `3-003c`, enumerates YUYV modes through 2592×1944, and
-successfully captured 30 VGA frames from `/dev/video1`. [PICO-PI hardware
+MIPI-CSI receiver's 240 MHz clock and `csis-wclk` setting. The target binds
+`ov5645_mipi_v2` at `3-003c` and enumerates YUYV modes through 2592×1944, but
+camera capture is not validated: direct retesting produced corrupted frames
+and unstable repeated capture. [Current camera
+investigation](../camera-investigation.md) · [PICO-PI hardware
 manual](https://www.mouser.com/datasheet/2/608/technexion_05242017_PICO-PI-IMX7-1214899.pdf)

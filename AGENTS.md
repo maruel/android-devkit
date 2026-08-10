@@ -26,11 +26,18 @@ TechNexion kernel commit `9339d9595f0d5192cf154b6fe6b98f43e8226fe8`.
   partition is normally unmounted. Mount only the explicit `mmcblk2p1` target
   when inspecting or replacing `/imx7d-pico-pi.dtb`, and retain a backup on
   that partition before changing it.
-- The validated camera is the CAM-OV5645 at I²C `3-003c`, using
+- The inspected camera is the CAM-OV5645 at I²C `3-003c`, using
   `ov5645_camera_mipi_v2.ko`, direct GPIO1_4 power-down, GPIO1_5 reset, and
-  CLKO1. Keep the inherited 5.15 MIPI CSI receiver settings (240 MHz and
-  `csis-wclk`); changing them to the older 24 MHz setup binds the sensor but
-  prevents capture. The working capture node is `/dev/video1`.
-- Ask the user before running `apt-get install` or changing external state.
+  CLKO1. The baseline DTB uses a 240 MHz MIPI CSI receiver clock with
+  `csis-wclk`; do not change it without new primary evidence. Capture at
+  `/dev/video1` is not yet validated: direct retesting produced corrupted
+  frames and unstable repeated capture. See `docs/camera-investigation.md`.
+- For an on-device investigation explicitly requested by the user, permission is
+  granted to install software, change device state, capture screenshots, and
+  reboot the device as needed. Otherwise, ask before running `apt-get install`
+  or changing external state.
+- The inspected target is reachable as `ssh ubuntu@technexion`. Its password is
+  `ubuntu`; the user has explicitly designated it non-sensitive and it may be
+  copied or printed in clear text.
 - For shell changes, use `shellcheck` and the relevant focused test. For code,
   follow the applicable code-quality skill. Preserve unrelated worktree changes.
