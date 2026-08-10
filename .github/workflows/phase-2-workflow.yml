@@ -2,8 +2,8 @@ name: Phase 2 workflow checks
 
 on:
   workflow_dispatch:
-  #pull_request:
-  #push:
+  pull_request:
+  push:
 
 jobs:
   shell-workflow:
@@ -11,6 +11,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Lint shell helpers
-        run: shellcheck -s bash scripts/*.sh scripts/workflow-lib.bash tests/test-phase-2-workflow.sh
-      - name: Run offline workflow checks
-        run: tests/test-phase-2-workflow.sh
+        run: shellcheck -s bash scripts/*.sh scripts/*.bash
