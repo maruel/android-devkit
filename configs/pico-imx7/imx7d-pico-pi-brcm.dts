@@ -49,3 +49,8 @@
 &pca9554_tev_mipi {
 	status = "disabled";
 };
+
+// Preserve the validated 192 MiB CMA reservation on the inspected boards.
+&{/reserved-memory/linux,cma} {
+	size = <0x0c000000>;
+};

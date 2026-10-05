@@ -17,7 +17,19 @@ sudo apt install --no-install-recommends curl kmod libguestfs-tools unzip xz-uti
 The generated image includes the validated camera stack, a hardware-derived
 hostname for each board, and the low-memory policy (including a plain desktop
 background) from [`scripts/configure-pico-imx7-memory.sh`](scripts/configure-pico-imx7-memory.sh).
-See [BUILD.md](BUILD.md) for its exact contents and existing-target configuration.
+It also includes safe device initialization, Cheese 720p defaults, bounded
+journaling, watchdog recovery, and verified group access. See [BUILD.md](BUILD.md)
+for exact contents and existing-target configuration.
+
+Inspect both existing boards with the same maintained updater:
+
+```bash
+./update-device.sh --target ubuntu@192.168.4.120 \
+  --target ubuntu@192.168.1.153 --check
+```
+
+Apply a reviewed differential to an explicit target with `--apply`; add
+`--camera-test` for bounded 720p capture and stream-close acceptance.
 
 Power the board off before moving the caps. Set the jumpers to Serial Boot Loader mode, connect the USB-C
 OTG/power port, and confirm `lsusb -d 15a2:0076` reports the expected device.

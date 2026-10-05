@@ -43,22 +43,52 @@ This builds the vendor V2 OV5645 driver,
 `ov5645_camera_mipi_v2.ko`, with the tracked mode-synchronization patch, and
 `mx6s_capture.ko` with the stream-close patch that prevents the observed
 close-time lockup. It also rebuilds the required MIPI CSI, legacy capture, and
-AP6335 Wi-Fi modules. The builder applies both camera patches exactly to a
-Git-free archive of the pinned source, then verifies ARM ABI and literal
+AP6335 Wi-Fi modules. The builder applies all three camera patches (mode
+synchronization, safe stream close, and the MX6S 720p size limit) without fuzz
+to a Git-free archive of the pinned source, then verifies ARM ABI and literal
 vermagic for all seven modules. It does not build or use the older OV5645
 camera driver.
 
 The scripts keep the kernel checkout and build output in `artifacts/`.
+The wrapper fetches the exact pinned commit and the builder archives it without
+changing an existing checkout's HEAD or working files. To select a separately
+installed GCC 12 ARM compiler or a fresh output directory, use:
+
+```bash
+./build-drivers.sh --cross-gcc /absolute/path/to/arm-linux-gnueabi-gcc-12 \
+  --output-dir "$PWD/artifacts/module-build-new"
+```
+
+The compiler must target `arm-linux-gnueabi`; other versions and targets are
+rejected before creating build output. The build record binds all seven modules
+and the DTB to their hashes and records the compiler version/hash, prepared and
+build configuration hashes, tracked DTS hash, and all three camera patch hashes.
+The derived DTS explicitly reserves 192 MiB CMA and keeps the inherited 240 MHz
+CSI receiver clock and `csis-wclk`.
+
+Publication requires two successful updater camera-acceptance runs on the same
+board with the same recorded build and boot ID. It refuses legacy records without matching
+current DTS and patch attestations, then installs a complete staged set and its
+record together:
+
+```bash
+./scripts/publish-pico-imx7-modules.sh \
+  --module-build "$PWD/artifacts/module-build-new" \
+  --acceptance-dir "$PWD/artifacts/target-updates/<first-run>" \
+  --acceptance-dir "$PWD/artifacts/target-updates/<second-run>"
+```
 
 ## Access the inspected target
 
 Connect to the board with:
 
 ```bash
-./scripts/ssh-technexion.sh
+SSH_TECHNEXION_TARGET=ubuntu@192.168.1.153 ./scripts/ssh-technexion.sh
 ```
 
-The helper uses `sshpass` to connect noninteractively to `ubuntu@technexion`.
+The helper uses `sshpass`; set `SSH_TECHNEXION_TARGET` explicitly when selecting
+`ubuntu@192.168.4.120` (`technexion-126c`) or `ubuntu@192.168.1.153`
+(`technexion-1e5d`). Its legacy default is `ubuntu@technexion`.
 Select another board with `SSH_TECHNEXION_TARGET=ubuntu@<hostname-or-IP>`;
 the reboot helper uses the same variable.
 The password is `ubuntu`; it is intentionally non-sensitive and may be used or
@@ -68,6 +98,50 @@ client after a 10-second grace period. Override the limit for a known long
 command with `SSH_TECHNEXION_TIMEOUT_SECONDS=300`. After a reboot, wait at
 least 40 seconds before reconnecting; [`scripts/reboot-technexion.sh`](scripts/reboot-technexion.sh)
 performs that wait and then checks SSH readiness.
+
+## Update existing boards
+
+Use the explicit-target updater to inspect both boards before applying changes:
+
+```bash
+./update-device.sh --target ubuntu@192.168.4.120 \
+  --target ubuntu@192.168.1.153 --check
+./update-device.sh --target ubuntu@192.168.1.153 --apply --camera-test
+```
+
+Inspection is the default. It verifies Ubuntu/kernel/board identity, the boot
+kernel, complete hardware UIDs, and short-name collisions across all requested
+boards before any writes. It reports the differential against the selected
+recorded module/firmware set and shared policy. Applying replaces differing
+custom modules; inspect the plan first. Select a rebuilt set with
+`--module-build "$PWD/artifacts/module-build-new"`.
+
+The updater verifies installed hashes, dependency metadata, permissions and
+groups, reboots only when required, waits at least 40 seconds, and reconnects
+by the pinned IP. Configuration backups are not retained. A DTB replacement
+uses only `/dev/mmcblk2p1` and a temporary rollback copy, deleted after verified
+replacement or verified restoration. Camera acceptance is optional and bounded:
+300 frames at 1280×720 YUYV, then an explicit-format reopen and one-frame capture.
+Run acceptance twice when validating a replacement build before publication.
+Publication requires different updater-generated run IDs and the same verified
+boot ID; copying an evidence directory does not establish another acceptance.
+
+`--install-netsurf` offers authenticated package setup and inventories installed
+packages and third-party apt sources. Only an unused Vivaldi source is disabled;
+other repository failures are reported with bounded apt diagnostics. Apply and
+failure evidence stays under `artifacts/target-updates/`.
+
+Images and updates share the same memory, hostname and board policy. The board
+policy installs root-owned oneshot initialization, grants group access to
+existing audio/video/render devices, and unblocks Wi-Fi without Bluetooth
+initialization. Standalone dnsmasq is masked only when systemd-resolved is present
+and no custom DNS/DHCP configuration or startup override is found. Persistent
+journaling is capped at 32 MiB (8 MiB runtime), with a 30-second hardware
+watchdog. Verification checks PID 1 actually owns the watchdog, DNS and SSH
+readiness, failed services, hostname, zram, swappiness, 192 MiB CMA, module
+identities, and the black background in the actual graphical session. Existing
+failed services are reported separately. Cheese photo/video defaults are set
+to 1280×720 at graphical login when its schema is available.
 
 ## Configure target memory
 
@@ -95,9 +169,10 @@ the board. The inspected
 Ubuntu target permits this noninteractive `sudo` invocation:
 
 ```bash
-./scripts/ssh-technexion.sh sudo -n bash -s \
+SSH_TECHNEXION_TARGET=ubuntu@192.168.1.153 \
+  ./scripts/ssh-technexion.sh sudo -n bash -s \
   < scripts/configure-pico-imx7-memory.sh
-./scripts/reboot-technexion.sh
+SSH_TECHNEXION_TARGET=ubuntu@192.168.1.153 ./scripts/reboot-technexion.sh
 ```
 
 The background applies at the next graphical login. To apply it immediately,
@@ -107,13 +182,17 @@ terminal as `ubuntu`. Wallpaper memory savings have not been measured.
 ## Give each board a unique hostname
 
 New images install a boot-time policy that derives
-`technexion-<4 lowercase hex digits>` from the last four digits of the `Serial`
-field in `/proc/cpuinfo` (for example, `technexion-abcd`).
+`technexion-<up to 4 lowercase hex digits>` from the hardware UID in
+`/sys/devices/soc0/serial_number`: strip leading zeros, then take the first four
+remaining digits (for example, `000001E5D79AC462` becomes `technexion-1e5d`).
 It updates `/etc/hostname`, the local hostname mapping in `/etc/hosts`, and the
 running hostname before NetworkManager and Avahi start. It runs at every boot,
-so one flash image can be used on all three boards. It requires exactly one
-nonzero, 16-digit hexadecimal CPU serial and refuses missing, malformed, or
-duplicate fields. It does not depend on the Ethernet interface.
+so one flash image can be used on both inspected boards. It requires a nonzero,
+16-digit hexadecimal SoC serial and refuses missing or malformed values.
+The inspected boards share the same `/proc/cpuinfo` serial and the last four
+digits of their SoC serials; neither is a unique identity. The policy does not
+depend on a network interface. These short names distinguish the two inspected
+boards; check for collisions when adding more boards.
 
 For an existing target, use its current hostname or IP address:
 
@@ -128,7 +207,7 @@ the readiness check, because its old hostname may stop resolving:
 
 ```bash
 SSH_TECHNEXION_TARGET=ubuntu@<board-IP> ./scripts/reboot-technexion.sh
-SSH_TECHNEXION_TARGET=ubuntu@technexion-abcd ./scripts/ssh-technexion.sh
+SSH_TECHNEXION_TARGET=ubuntu@technexion-1e5d ./scripts/ssh-technexion.sh
 ```
 
 Use the new hostname or its `.local` name once DHCP/mDNS has updated. Factory

@@ -12,10 +12,10 @@ The target runs `5.15.71`; the CAM-OV5645 sensor is
 legacy `mxc_v4l2_capture.ko`. The active sensor and receiver modules are
 `ov5645_camera_mipi_v2.ko` and `mxc_mipi_csi.ko`.
 
-The boot DTB has SHA-256
-`2e7cdfd5b6af15b9e5bf25b7a7c247405eabddfdcaa3f0b77a66bfe62f80b9d1`. It uses
-a 240 MHz MIPI CSI clock with `csis-wclk`; a target-side baseline backup is
-`/imx7d-pico-pi.dtb.camera-investigation-baseline`. Three temporary variants
+The receiver baseline uses a 240 MHz MIPI CSI clock with `csis-wclk`. The
+current derived boot DTB identity is recorded in
+[`modules.record`](../prebuilt/pico-imx7/ubuntu-22.04-5.15.71/modules.record).
+Three temporary variants
 without `csis-wclk`, using 24 MHz, 240 MHz, or the driver default 166 MHz,
 all produced a MIPI CSI frame start followed by FIFO overflow and timeout. Do
 not change the baseline receiver settings.
@@ -29,7 +29,7 @@ state. Hardware mode was instead selected by the vendor `capturemode` field of
 registers `0x3808..0x380b` confirmed that mismatch, and the OV5645 colour-bar
 test pattern showed diagonal wrapped bands. This was not a YUYV/UYVY issue.
 
-Two patches are replayed on a Git-free archive of the pinned kernel source for
+Three patches are replayed on a Git-free archive of the pinned kernel source for
 each driver build:
 
 - [`ov5645-v4l2-mode-sync.patch`](../patches/pico-imx7/ov5645-v4l2-mode-sync.patch)
@@ -38,11 +38,23 @@ each driver build:
 - [`mx6s-csi-stream-close.patch`](../patches/pico-imx7/mx6s-csi-stream-close.patch)
   stops a still-streaming downstream subdevice before the capture queue is
   released. It uses the source tree's `vb2_is_streaming()` API; a later vendor
-  patch uses an unavailable API.
+  patch uses an unavailable API. It also snapshots whether the capture queue
+  was streaming before `vb2_streamoff()` and stops the downstream receiver only
+  for a successful active-to-stopped transition. Duplicate STREAMOFF still
+  cancels queued buffers but does not stop the receiver again.
+- [`mx6s-csi-720p-limit.patch`](../patches/pico-imx7/mx6s-csi-720p-limit.patch)
+  restricts capture requests and advertised frame sizes/intervals to at most
+  1280×720.
 
 The second patch is required: previously, closing a finite capture could lock
 the target. `mx6s_capture.ko` is therefore part of the supported seven-module
-replacement set.
+replacement set. The pinned receiver drops a runtime-PM reference on every
+`s_stream(false)` call, while `vb2_streamoff()` also succeeds for an already
+stopped queue. A captured ioctl trace showed v4l2-ctl issuing STREAMOFF twice;
+the repeated call never returned and the board subsequently restarted. The
+capture driver's transition guard prevents duplicate receiver register access
+and runtime-PM reference drops; the trace identifies the blocking ioctl rather
+than the precise instruction inside the receiver.
 
 ## CMA boundary
 
@@ -54,10 +66,20 @@ kernel consumed it. A second candidate used a static
 That 128 MiB candidate completed one 300-frame 1280×720 capture, leaving only
 about 7 MiB CMA free, then reset the target during a second 300-frame capture.
 The target-side 192 MiB DTB backup was restored; it again passed a 300-frame
-1280×720 soak. Keep the 192 MiB CMA reservation. No higher camera resolution
+1280×720 soak. The derived DTS now explicitly declares that 192 MiB size instead of relying
+on the bootloader to rewrite the vendor reservation. Keep the 192 MiB CMA
+reservation. No higher camera resolution
 is claimed or required by this workflow.
 
 ## Target acceptance
+
+The source-attested prebuilt set passed two separate untraced updater
+acceptances on `technexion-1e5d` during the same boot: each captured 300 frames
+at 1280×720 YUYV and reopened for an explicit-format one-frame capture. The
+repeat updater applied no changes and requested no reboot. Both verified the
+same boot ID, watchdog ownership, memory policy, module identities, and actual
+Xfce background. This is bounded acceptance for the inspected camera and mode;
+browser start/stop behavior remains outside that check.
 
 With the corrected modules, a bare command such as:
 
@@ -134,5 +156,5 @@ was frozen. Software rendering costs about 125 MiB RSS and roughly one and a
 half CPU cores; do not run a heavy browser alongside it without observing
 available RAM and zram.
 
-The target retains 30-second watchdog and persistent-journal recovery settings
-from the investigation. Remove those deliberately if they are no longer wanted.
+The shared setup policy retains a 30-second watchdog and bounded persistent
+journaling. Verification requires an open watchdog descriptor owned by PID 1.

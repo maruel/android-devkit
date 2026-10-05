@@ -188,9 +188,12 @@ set -euo pipefail
 
 # Xfdesktop 4.16 creates monitor-model-specific properties at session startup.
 # Query those names instead of assuming a particular display connector/model.
-for command in awk sort xfconf-query xprop; do
+for command in awk sort tail tr xfconf-query xprop; do
   command -v "$command" >/dev/null || { printf 'Missing executable: %s\n' "$command" >&2; exit 1; }
 done
+check_only=false
+if [[ $# == 1 && $1 == --check ]]; then check_only=true
+elif (($# != 0)); then printf '%s\n' 'usage: pico-imx7-plain-background [--check]' >&2; exit 2; fi
 monitors=''
 for ((attempt = 0; attempt < 10; attempt++)); do
   properties="$(xfconf-query --channel xfce4-desktop --list)"
@@ -212,6 +215,18 @@ fi
 while IFS= read -r monitor; do
   for ((workspace = 0; workspace < workspaces; workspace++)); do
     prefix="$monitor/workspace$workspace"
+    if [[ $check_only == true ]]; then
+      [[ $(xfconf-query -c xfce4-desktop -p "$prefix/image-style") == 0 &&
+         $(xfconf-query -c xfce4-desktop -p "$prefix/color-style") == 0 &&
+         $(xfconf-query -c xfce4-desktop -p "$prefix/backdrop-cycle-enable") == false ]] || {
+        printf 'Desktop background differs at %s\n' "$prefix" >&2; exit 1;
+      }
+      color=$(xfconf-query -c xfce4-desktop -p "$prefix/rgba1")
+      [[ $(printf '%s\n' "$color" | tail -n 4 | tr '\n' ' ') == '0.000000 0.000000 0.000000 1.000000 ' ]] || {
+        printf 'Desktop color differs at %s\n' "$prefix" >&2; exit 1;
+      }
+      continue
+    fi
     xfconf-query -c xfce4-desktop -p "$prefix/backdrop-cycle-enable" -n -t bool -s false
     xfconf-query -c xfce4-desktop -p "$prefix/color-style" -n -t int -s 0
     xfconf-query -c xfce4-desktop -p "$prefix/rgba1" -n \
@@ -219,7 +234,10 @@ while IFS= read -r monitor; do
     xfconf-query -c xfce4-desktop -p "$prefix/image-style" -n -t int -s 0
   done
 done <<< "$monitors"
-printf '%s\n' 'Configured a solid black desktop without wallpaper.'
+if [[ $check_only == false ]]; then
+  exec "$0" --check
+fi
+printf '%s\n' 'Verified a solid black desktop without wallpaper.'
 EOF
 cat > "$work_dir/plain-background.desktop" <<EOF
 [Desktop Entry]

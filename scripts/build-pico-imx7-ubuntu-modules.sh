@@ -1,20 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly KERNEL_COMMIT='9339d9595f0d5192cf154b6fe6b98f43e8226fe8'
-readonly PREPARED_CONFIG_SHA256='36d36040492a62bd7593cdc03311c7d7e7f65bac1ba1e40272f26cb278365b99'
-readonly TARGET_RELEASE='5.15.71'
-# The literal .modinfo value ends in one space; the image modules carry that
-# same byte after the ARM architecture vermagic fragment.
-readonly TARGET_VERMAGIC='5.15.71 SMP preempt mod_unload modversions ARMv7 p2v8 '
 readonly CROSS_COMPILE='arm-linux-gnueabi-'
 # This vendor 5.15 tree cannot complete a GCC 14 build: libahci's
 # array_index_nospec() trips its compile-time assertion. GCC 12 is the pinned,
 # compatible compiler for the reproducible module build below.
-readonly CROSS_GCC='/usr/bin/arm-linux-gnueabi-gcc-12'
+cross_gcc='/usr/bin/arm-linux-gnueabi-gcc-12'
 
 usage() {
-  printf '%s\n' 'usage: build-pico-imx7-ubuntu-modules.sh --source-checkout /absolute/path/to/linux-tn-imx --prepared-config /absolute/path/to/ubuntu-22.04-5.15.71-prepared.config --output-dir /absolute/path/to/new-output-directory' >&2
+  printf '%s\n' 'usage: build-pico-imx7-ubuntu-modules.sh --source-checkout /absolute/path/to/linux-tn-imx --prepared-config /absolute/path/to/ubuntu-22.04-5.15.71-prepared.config --output-dir /absolute/path/to/new-output-directory [--cross-gcc /absolute/path/to/gcc-12]' >&2
   exit 2
 }
 
@@ -40,19 +34,13 @@ sha256_file() {
   printf '%s\n' "${digest%% *}"
 }
 
-module_vermagic() {
-  local module="$1" values count
-  values="$(LC_ALL=C strings -a -- "$module" | awk -F= '$1 == "vermagic" { print substr($0, 10) }')"
-  count="$(printf '%s\n' "$values" | sed '/^$/d' | wc -l)"
-  [[ "$count" == 1 ]] || fail "module must contain exactly one vermagic value: $module"
-  printf '%s\n' "$values"
-}
-
 source_checkout=""
 prepared_config=""
 output_dir=""
 script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir
+# shellcheck source=scripts/pico-imx7-artifacts.bash
+source "$script_dir/pico-imx7-artifacts.bash"
 brcm_dts="$script_dir/../configs/pico-imx7/imx7d-pico-pi-brcm.dts"
 mx6s_720p_limit_patch="$script_dir/../patches/pico-imx7/mx6s-csi-720p-limit.patch"
 mx6s_stream_close_patch="$script_dir/../patches/pico-imx7/mx6s-csi-stream-close.patch"
@@ -60,12 +48,13 @@ ov5645_mode_sync_patch="$script_dir/../patches/pico-imx7/ov5645-v4l2-mode-sync.p
 
 while (($# > 0)); do
   case "$1" in
-    --source-checkout|--prepared-config|--output-dir)
+    --source-checkout|--prepared-config|--output-dir|--cross-gcc)
       (($# >= 2)) || usage
       case "$1" in
         --source-checkout) source_checkout="$2" ;;
         --prepared-config) prepared_config="$2" ;;
         --output-dir) output_dir="$2" ;;
+        --cross-gcc) cross_gcc="$2" ;;
       esac
       shift 2
       ;;
@@ -94,8 +83,19 @@ require_absolute_regular_file 'OV5645 V4L2 mode synchronization patch' "$ov5645_
 for required_command in awk dirname env git grep install make mkdir patch readelf sed sha256sum strings tar wc; do
   require_command "$required_command"
 done
-[[ -x "$CROSS_GCC" && ! -L "$CROSS_GCC" ]] ||
-  fail "required ARM EABI compiler not found: $CROSS_GCC"
+require_absolute_regular_file '--cross-gcc' "$cross_gcc"
+[[ -x "$cross_gcc" ]] || fail "compiler is not executable: $cross_gcc"
+compiler_version=$(env -i PATH=/usr/bin:/bin LC_ALL=C "$cross_gcc" -dumpfullversion)
+compiler_target=$(env -i PATH=/usr/bin:/bin LC_ALL=C "$cross_gcc" -dumpmachine)
+[[ $compiler_version == 12.* && $compiler_target == arm-linux-gnueabi ]] ||
+  fail 'compiler must be GCC 12 targeting arm-linux-gnueabi'
+readonly cross_gcc compiler_version compiler_target
+compiler_sha=$(sha256_file "$cross_gcc")
+brcm_dts_sha=$(sha256_file "$brcm_dts")
+mx6s_720p_limit_patch_sha=$(sha256_file "$mx6s_720p_limit_patch")
+mx6s_stream_close_patch_sha=$(sha256_file "$mx6s_stream_close_patch")
+ov5645_mode_sync_patch_sha=$(sha256_file "$ov5645_mode_sync_patch")
+readonly compiler_sha brcm_dts_sha mx6s_720p_limit_patch_sha mx6s_stream_close_patch_sha ov5645_mode_sync_patch_sha
 
 prepared_config_sha="$(sha256_file "$prepared_config")"
 [[ "$prepared_config_sha" == "$PREPARED_CONFIG_SHA256" ]] ||
@@ -131,7 +131,7 @@ install -m 0644 -- "$prepared_config" "$build_dir/.config"
 install -m 0644 -- "$brcm_dts" "$source_stage/arch/arm/boot/dts/imx7d-pico-pi-brcm.dts"
 
 make_command=(/usr/bin/make -C "$source_stage" O="$build_dir" ARCH=arm
-  CROSS_COMPILE="$CROSS_COMPILE" CC="$CROSS_GCC")
+  CROSS_COMPILE="$CROSS_COMPILE" CC="$cross_gcc")
 build_environment=(env -i PATH=/usr/bin:/bin LC_ALL=C TZ=UTC
   KBUILD_BUILD_USER=builder KBUILD_BUILD_HOST=offline)
 
@@ -146,15 +146,6 @@ kernelrelease="$("${build_environment[@]}" "${make_command[@]}" -s kernelrelease
 "${build_environment[@]}" "${make_command[@]}" M=drivers/media/platform/mxc/capture modules
 "${build_environment[@]}" "${make_command[@]}" imx7d-pico-pi-brcm.dtb
 
-declare -a module_paths=(
-  'drivers/net/wireless/broadcom/brcm80211/brcmutil/brcmutil.ko'
-  'drivers/net/wireless/broadcom/brcm80211/brcmfmac/brcmfmac.ko'
-  'drivers/media/platform/mxc/capture/mx6s_capture.ko'
-  'drivers/media/platform/mxc/capture/mxc_v4l2_capture.ko'
-  'drivers/media/platform/mxc/capture/v4l2-int-device.ko'
-  'drivers/media/platform/mxc/capture/mxc_mipi_csi.ko'
-  'drivers/media/platform/mxc/capture/ov5645_camera_mipi_v2.ko'
-)
 declare -a record_lines=(
   'format=pico-imx7-ubuntu-22.04-module-build-v1'
   "kernel_commit=$KERNEL_COMMIT"
@@ -163,7 +154,14 @@ declare -a record_lines=(
   "kernelrelease=$kernelrelease"
   "expected_vermagic=$TARGET_VERMAGIC"
   "cross_compile=$CROSS_COMPILE"
-  "compiler=$CROSS_GCC"
+  "compiler=$cross_gcc"
+  "compiler_version=$compiler_version"
+  "compiler_target=$compiler_target"
+  "compiler_sha256=$compiler_sha"
+  "brcm_dts_sha256=$brcm_dts_sha"
+  "mx6s_720p_limit_patch_sha256=$mx6s_720p_limit_patch_sha"
+  "mx6s_stream_close_patch_sha256=$mx6s_stream_close_patch_sha"
+  "ov5645_mode_sync_patch_sha256=$ov5645_mode_sync_patch_sha"
 )
 
 for module_path in "${module_paths[@]}"; do
@@ -190,5 +188,8 @@ record_lines+=(
   "boot_dtb_sha256=$(sha256_file "$output_dtb")"
 )
 
+[[ $(sha256_file "$cross_gcc") == "$compiler_sha" ]] || fail 'compiler changed during build'
 printf '%s\n' "${record_lines[@]}" > "$output_dir/modules.record"
+validate_pico_modules "$output_dir"
+require_pico_source_attestation "$output_dir/modules.record" "$script_dir/.."
 printf 'built and ABI-validated Pico i.MX7 Ubuntu modules: %s\n' "$output_dir"

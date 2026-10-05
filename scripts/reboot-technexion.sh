@@ -5,7 +5,9 @@ script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir
 readonly ssh_helper="$script_dir/ssh-technexion.sh"
 readonly initial_wait_seconds=40
-readonly retry_count=6
+# An inspected board's networking recovered after the former 70-second window.
+# Keep each probe at 15 seconds and allow a finite longer recovery window.
+readonly retry_count=24
 readonly retry_delay_seconds=5
 
 [[ -x "$ssh_helper" ]] || {

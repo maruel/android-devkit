@@ -13,7 +13,7 @@ else
 fi
 readonly image_root
 
-for command in cat chmod install ln mkdir; do
+for command in cat chmod install ln mkdir mktemp rm; do
   command -v "$command" >/dev/null || { printf 'Missing executable: %s\n' "$command" >&2; exit 1; }
 done
 if [[ -z "$image_root" ]]; then
@@ -23,7 +23,6 @@ fi
 initializer="$image_root/usr/local/sbin/pico-imx7-hostname"
 service="$image_root/etc/systemd/system/pico-imx7-hostname.service"
 readonly initializer service
-install -d -- "$(dirname -- "$initializer")" "$(dirname -- "$service")"
 for destination in "$initializer" "$service"; do
   [[ ! -L "$destination" && ( ! -e "$destination" || -f "$destination" ) ]] || {
     printf 'Unsafe destination: %s\n' "$destination" >&2
@@ -31,30 +30,42 @@ for destination in "$initializer" "$service"; do
   }
 done
 
-cat > "$initializer" <<'EOF'
+work_dir="$(mktemp -d)"
+readonly work_dir
+trap 'rm -rf -- "$work_dir"' EXIT
+cat > "$work_dir/hostname" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Use the ARM kernel's Serial field; never substitute a network or image identity.
-if ! serial="$(awk '
-  $1 == "Serial" {
-    if ($2 != ":" || NF != 3) exit 1
-    count++
-    serial = tolower($3)
-  }
-  END {
-    if (count != 1) exit 1
-    print serial
-  }
-' /proc/cpuinfo)"; then
-  printf '%s\n' 'Expected one valid Serial field in /proc/cpuinfo.' >&2
+# The i.MX SoC driver exposes the hardware UID. /proc/cpuinfo's Serial is
+# identical on inspected boards, and even the hardware UID's last four digits
+# collide. Use the first four significant digits for the board's short name.
+# This kernel sysfs attribute is bounded to one page; require exactly one line.
+if ! mapfile -t serial_lines < /sys/devices/soc0/serial_number; then
+  printf '%s\n' 'Could not read the i.MX SoC hardware serial.' >&2
   exit 1
 fi
-[[ "$serial" =~ ^[0-9a-f]{16}$ && "$serial" != 0000000000000000 ]] || {
-  printf '%s\n' 'Serial in /proc/cpuinfo must be a nonzero 16-digit hexadecimal value.' >&2
+[[ ${#serial_lines[@]} == 1 ]] || {
+  printf '%s\n' 'Expected exactly one SoC hardware serial.' >&2
   exit 1
 }
-new_hostname="technexion-${serial: -4}"
+serial="${serial_lines[0],,}"
+[[ "$serial" =~ ^[0-9a-f]{16}$ && "$serial" != 0000000000000000 ]] || {
+  printf '%s\n' 'SoC hardware serial must be a nonzero 16-digit hexadecimal value.' >&2
+  exit 1
+}
+short_serial="$serial"
+while [[ "$short_serial" == 0* ]]; do
+  short_serial="${short_serial#0}"
+done
+new_hostname="technexion-${short_serial:0:4}"
+if [[ $# == 1 && $1 == --identity ]]; then
+  printf "uid=%s\nhostname=%s\n" "$serial" "$new_hostname"
+  exit 0
+elif (($# != 0)); then
+  printf "%s\n" "usage: pico-imx7-hostname [--identity]" >&2
+  exit 2
+fi
 for destination in /etc/hostname /etc/hosts; do
   [[ -f "$destination" && ! -L "$destination" ]] || {
     printf 'Expected a regular file: %s\n' "$destination" >&2
@@ -63,7 +74,14 @@ for destination in /etc/hostname /etc/hosts; do
 done
 old_hostname="$(cat /etc/hostname)"
 hosts_temporary="$(mktemp /etc/.pico-imx7-hosts.XXXXXX)"
-trap 'rm -f -- "$hosts_temporary"' EXIT
+hostname_temporary=''
+cleanup() {
+  rm -f -- "$hosts_temporary"
+  if [[ -n $hostname_temporary ]]; then rm -f -- "$hostname_temporary"; fi
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' HUP TERM
 # Keep unrelated mappings and aliases; replace only the local hostname token.
 awk -v old="$old_hostname" -v new="$new_hostname" '
   $1 == "127.0.1.1" {
@@ -88,17 +106,28 @@ if ! cmp -s -- "$hosts_temporary" /etc/hosts; then
   mv -T -- "$hosts_temporary" /etc/hosts
 fi
 if [[ "$old_hostname" != "$new_hostname" ]]; then
-  printf '%s\n' "$new_hostname" > /etc/hostname
+  hostname_temporary="$(mktemp /etc/.pico-imx7-hostname.XXXXXX)"
+  printf '%s\n' "$new_hostname" > "$hostname_temporary"
+  chmod --reference=/etc/hostname "$hostname_temporary"
+  chown --reference=/etc/hostname "$hostname_temporary"
+  cmp -s -- "$hostname_temporary" <(printf '%s\n' "$new_hostname") || {
+    printf '%s\n' 'Temporary hostname content verification failed.' >&2
+    exit 1
+  }
+  mv -T -- "$hostname_temporary" /etc/hostname
+  hostname_temporary=''
 fi
 hostname "$new_hostname"
 printf 'Hostname: %s\n' "$new_hostname"
 EOF
-chmod 0755 -- "$initializer"
+chmod 0755 -- "$work_dir/hostname"
 
 # Validate and apply the board identity before enabling any boot dependencies.
 if [[ -z "$image_root" ]]; then
-  "$initializer"
+  "$work_dir/hostname"
 fi
+install -d -- "$(dirname -- "$initializer")" "$(dirname -- "$service")"
+install -m 0755 -- "$work_dir/hostname" "$initializer"
 
 cat > "$service" <<'EOF'
 [Unit]

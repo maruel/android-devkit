@@ -23,8 +23,12 @@ service masks, and records policy-file hashes in provenance.
 The policy now includes a plain Xfce background and a hardware-derived hostname
 initializer with verified boot dependency links. The inspected base image has
 Xfdesktop 4.16 and Xfconf; the background helper uses their monitor/workspace
-properties. On-device validation and memory savings for these additions remain
-unmeasured.
+properties. Actual Xfce sessions on both inspected boards verified the black background
+after reboot; wallpaper memory savings remain unmeasured. Shared board policy
+adds safe oneshot device access, Ubuntu audio/video/render membership, Cheese
+1280×720 login defaults, conditional unused dnsmasq masking, bounded persistent
+journaling, and a 30-second watchdog. Live checks require PID 1 to own the
+watchdog rather than relying on its configuration or device-node presence.
 
 ## Configuration provenance
 
@@ -45,12 +49,15 @@ the derived file because vendor-source `olddefconfig` requirements differ.
 
 ## Rebuilding modules
 
-`./build-drivers.sh` uses `/usr/bin/arm-linux-gnueabi-gcc-12`; GCC 14 does not
-build this vendor tree. It stages a Git-free archive at the pinned commit,
+`./build-drivers.sh` defaults to `/usr/bin/arm-linux-gnueabi-gcc-12` and accepts
+an explicit absolute `--cross-gcc` path after verifying GCC 12 and the ARM EABI
+target; GCC 14 does not build this vendor tree. It stages a Git-free archive at the pinned commit,
 performs the required kernel build, applies the strict camera patches, and
-publishes a validated seven-module set. It checks ARM ELF type and the literal
-vermagic before publication. Focused tests also reject a patch that does not
-apply exactly.
+produces a validated seven-module set. It checks ARM ELF type and the literal
+vermagic and records the compiler, DTS and all three camera-patch identities.
+Publishing a replacement requires current source attestations and two successful
+finite camera acceptances using that build. Legacy v1 records remain readable
+but cannot satisfy the publication requirements.
 
 The supported set is recorded in
 [`prebuilt/pico-imx7/ubuntu-22.04-5.15.71/modules.record`](../prebuilt/pico-imx7/ubuntu-22.04-5.15.71/modules.record):

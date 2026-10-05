@@ -1,8 +1,6 @@
-diff --git a/drivers/media/platform/mxc/capture/mx6s_capture.c b/drivers/media/platform/mxc/capture/mx6s_capture.c
-index 84f0e40..d321d74 100644
 --- a/drivers/media/platform/mxc/capture/mx6s_capture.c
 +++ b/drivers/media/platform/mxc/capture/mx6s_capture.c
-@@ -1221,6 +1221,9 @@ static int mx6s_csi_close(struct file *file)
+@@ -1224,6 +1224,9 @@
  
  	mutex_lock(&csi_dev->lock);
  
@@ -12,3 +10,23 @@ index 84f0e40..d321d74 100644
  	if (--csi_dev->open_count == 0) {
  		vb2_queue_release(&csi_dev->vb2_vidq);
  
+@@ -1546,6 +1549,7 @@
+ {
+ 	struct mx6s_csi_dev *csi_dev = video_drvdata(file);
+ 	struct v4l2_subdev *sd = csi_dev->sd;
++	bool was_streaming;
+ 	int ret;
+ 
+ 	WARN_ON(priv != file->private_data);
+@@ -1557,8 +1561,10 @@
+ 	 * This calls buf_release from host driver's videobuf_queue_ops for all
+ 	 * remaining buffers. When the last buffer is freed, stop capture
+ 	 */
++	// Receiver stream-off drops a runtime-PM reference; do it only once.
++	was_streaming = vb2_is_streaming(&csi_dev->vb2_vidq);
+ 	ret = vb2_streamoff(&csi_dev->vb2_vidq, i);
+-	if (!ret)
++	if (!ret && was_streaming)
+ 		v4l2_subdev_call(sd, video, s_stream, 0);
+ 
+ 	return ret;

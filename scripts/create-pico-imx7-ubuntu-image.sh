@@ -2,12 +2,6 @@
 set -euo pipefail
 
 readonly BASE_IMAGE_SHA256='9fb5d12f5f50167d5529979b86fad7fcba454ea5b8e984feb43f2446c0e6f3ed'
-readonly KERNEL_COMMIT='9339d9595f0d5192cf154b6fe6b98f43e8226fe8'
-readonly TARGET_RELEASE='5.15.71'
-readonly TARGET_VERMAGIC='5.15.71 SMP preempt mod_unload modversions ARMv7 p2v8 '
-readonly PREPARED_CONFIG_SHA256='36d36040492a62bd7593cdc03311c7d7e7f65bac1ba1e40272f26cb278365b99'
-readonly AP6335_FIRMWARE_SHA256='16cbdac88d49c2f76eea461cf6c81e3866572f850fe29be726555549ac1c8f55'
-readonly AP6335_NVRAM_SHA256='3c4d7058803bd54d0443de0c272b6abd67e5f28f5ba11ecaf790331758f24cf4'
 
 usage() {
   printf '%s\n' 'usage: create-pico-imx7-ubuntu-image.sh --base-image /absolute/path/to/ubuntu-22.04.raw --module-build /absolute/path/to/validated-module-build --firmware-dir /absolute/path/to/ap6335-firmware --output-image /absolute/path/to/new-image.raw' >&2
@@ -48,16 +42,10 @@ sha256_file() {
   printf '%s\n' "${digest%% *}"
 }
 
-module_vermagic() {
-  local module="$1" values count
-  values="$(LC_ALL=C strings -a -- "$module" | awk -F= '$1 == "vermagic" { print substr($0, 10) }')"
-  count="$(printf '%s\n' "$values" | sed '/^$/d' | wc -l)"
-  [[ "$count" == 1 ]] || fail "module must contain exactly one vermagic value: $module"
-  printf '%s\n' "$values"
-}
-
 script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir
+# shellcheck source=scripts/pico-imx7-artifacts.bash
+source "$script_dir/pico-imx7-artifacts.bash"
 memory_policy_script="$script_dir/configure-pico-imx7-memory.sh"
 hostname_policy_script="$script_dir/configure-pico-imx7-hostname.sh"
 readonly memory_policy_script hostname_policy_script
@@ -121,108 +109,13 @@ require_absolute_regular_file 'memory policy installer' "$memory_policy_script"
 [[ -x "$memory_policy_script" ]] || fail 'memory policy installer is not executable'
 require_absolute_regular_file 'hostname policy installer' "$hostname_policy_script"
 [[ -x "$hostname_policy_script" ]] || fail 'hostname policy installer is not executable'
-for required_line in \
-  'format=pico-imx7-ubuntu-22.04-module-build-v1' \
-  "kernel_commit=$KERNEL_COMMIT" \
-  "prepared_config_sha256=$PREPARED_CONFIG_SHA256" \
-  "kernelrelease=$TARGET_RELEASE" \
-  "expected_vermagic=$TARGET_VERMAGIC"; do
-  grep -Fx -- "$required_line" "$module_record" >/dev/null ||
-    fail "module record is missing required identity: $required_line"
-done
-grep -Fx 'boot_dtb=imx7d-pico-pi.dtb' "$module_record" >/dev/null ||
-  fail 'module record is missing the Broadcom boot device-tree identity'
-grep -Fx "boot_dtb_sha256=$(sha256_file "$boot_dtb")" "$module_record" >/dev/null ||
-  fail 'module record does not match the Broadcom boot device tree'
+require_absolute_regular_file 'board policy installer' "$script_dir/configure-pico-imx7-board.sh"
+[[ -x "$script_dir/configure-pico-imx7-board.sh" ]] || fail 'board policy installer is not executable'
+require_absolute_regular_file 'policy catalog' "$script_dir/pico-imx7-policy-catalog.bash"
+validate_pico_artifacts "$module_build" "$firmware_dir"
 
-declare -a module_names=(
-  'brcmutil.ko'
-  'brcmfmac.ko'
-  'mx6s_capture.ko'
-  'mxc_v4l2_capture.ko'
-  'v4l2-int-device.ko'
-  'mxc_mipi_csi.ko'
-  'ov5645_camera_mipi_v2.ko'
-)
-declare -a module_destinations=(
-  'kernel/drivers/net/wireless/broadcom/brcm80211/brcmutil/brcmutil.ko'
-  'kernel/drivers/net/wireless/broadcom/brcm80211/brcmfmac/brcmfmac.ko'
-  'kernel/drivers/media/platform/mxc/capture/mx6s_capture.ko'
-  'kernel/drivers/media/platform/mxc/capture/mxc_v4l2_capture.ko'
-  'kernel/drivers/media/platform/mxc/capture/v4l2-int-device.ko'
-  'kernel/drivers/media/platform/mxc/capture/mxc_mipi_csi.ko'
-  'kernel/drivers/media/platform/mxc/capture/ov5645_camera_mipi_v2.ko'
-)
-for module_name in "${module_names[@]}"; do
-  module="$modules_dir/$module_name"
-  require_absolute_regular_file "module $module_name" "$module"
-  readelf -h -- "$module" | grep -Eq 'Machine:.*ARM' || fail "module is not an ARM ELF object: $module_name"
-  [[ "$(module_vermagic "$module")" == "$TARGET_VERMAGIC" ]] ||
-    fail "module vermagic does not match the target image: $module_name"
-done
-declare -a firmware_names=(
-  'brcmfmac4339-sdio.bin'
-  'brcmfmac4339-sdio.fsl,pico-imx7d.bin'
-  'brcmfmac4339-sdio.txt'
-  'brcmfmac4339-sdio.fsl,pico-imx7d.txt'
-)
-declare -a firmware_destinations=(
-  'brcm/brcmfmac4339-sdio.bin'
-  'brcm/brcmfmac4339-sdio.fsl,pico-imx7d.bin'
-  'brcm/brcmfmac4339-sdio.txt'
-  'brcm/brcmfmac4339-sdio.fsl,pico-imx7d.txt'
-)
-for firmware_name in "${firmware_names[@]}"; do
-  require_absolute_regular_file "--firmware-dir/$firmware_name" "$firmware_dir/$firmware_name"
-done
-for firmware_name in 'brcmfmac4339-sdio.bin' 'brcmfmac4339-sdio.fsl,pico-imx7d.bin'; do
-  [[ "$(sha256_file "$firmware_dir/$firmware_name")" == "$AP6335_FIRMWARE_SHA256" ]] ||
-    fail "AP6335 firmware checksum does not match the pinned source: $firmware_name"
-done
-for firmware_name in 'brcmfmac4339-sdio.txt' 'brcmfmac4339-sdio.fsl,pico-imx7d.txt'; do
-  [[ "$(sha256_file "$firmware_dir/$firmware_name")" == "$AP6335_NVRAM_SHA256" ]] ||
-    fail "AP6335 NVRAM checksum does not match the pinned source: $firmware_name"
-done
-
-declare -a policy_paths=(
-  '/etc/sysctl.d/90-pico-imx7-memory.conf'
-  '/usr/local/sbin/pico-imx7-zram-init'
-  '/etc/systemd/system/zram-config.service.d/10-pico-imx7-memory.conf'
-  '/etc/firefox/syspref.js'
-  '/home/ubuntu/.config/autostart/blueman.desktop'
-  '/usr/local/bin/pico-imx7-plain-background'
-  '/home/ubuntu/.config/autostart/pico-imx7-plain-background.desktop'
-  '/usr/local/sbin/pico-imx7-hostname'
-  '/etc/systemd/system/pico-imx7-hostname.service'
-)
-declare -a policy_names=(
-  'memory_policy_sysctl'
-  'memory_policy_zram_initializer'
-  'memory_policy_zram_drop_in'
-  'memory_policy_firefox_preferences'
-  'memory_policy_blueman_autostart'
-  'memory_policy_background_initializer'
-  'memory_policy_background_autostart'
-  'hostname_policy_initializer'
-  'hostname_policy_service'
-)
-declare -a hostname_dependencies=(
-  'sysinit.target.wants'
-  'NetworkManager.service.requires'
-  'avahi-daemon.service.requires'
-)
-declare -a masked_services=(
-  'bluetooth.service'
-  'blueman-mechanism.service'
-  'ModemManager.service'
-  'udisks2.service'
-  'rsyslog.service'
-  'snapd.service'
-  'snapd.socket'
-  'snapd.seeded.service'
-  'snapd.autoimport.service'
-  'snapd.apparmor.service'
-)
+# shellcheck source=scripts/pico-imx7-policy-catalog.bash
+source "$script_dir/pico-imx7-policy-catalog.bash"
 
 # Prefer an unprivileged libguestfs appliance. Some Ubuntu hosts make their
 # kernel unreadable to regular users, in which case retry the failed guestfish
@@ -268,13 +161,29 @@ trap cleanup EXIT
 working_image="$temporary/image.raw"
 stage_root="$temporary/root"
 policy_root="$temporary/policy"
+context_root="$temporary/context"
+context_archive="$temporary/context.tar"
 archive="$temporary/modules.tar"
 firmware_archive="$temporary/firmware.tar"
 policy_archive="$temporary/policy.tar"
 uenv="$temporary/uEnv.txt"
 updated_uenv="$temporary/uEnv.txt.updated"
-mkdir -- "$stage_root" "$policy_root"
+mkdir -- "$stage_root" "$policy_root" "$context_root"
 cp --reflink=auto --preserve=mode,timestamps -- "$base_image" "$working_image"
+# Read service/config/account context from the disposable derived image only.
+guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda2 / : tar-out /etc "$context_archive"
+restore_user_ownership "$context_archive"
+mkdir -- "$context_root/etc"
+tar -C "$context_root/etc" -xf "$context_archive"
+unit=systemd-resolved.service
+if [[ "$(guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda2 / : is-file "/lib/systemd/system/$unit")" == true ]]; then
+  mkdir -p -- "$context_root/lib/systemd/system"
+  guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda2 / : download "/lib/systemd/system/$unit" "$context_root/lib/systemd/system/$unit"
+  restore_user_ownership "$context_root/lib/systemd/system/$unit"
+fi
+ubuntu_uid="$(awk -F: '$1=="ubuntu" {print $3}' "$context_root/etc/passwd")"
+ubuntu_gid="$(awk -F: '$1=="ubuntu" {print $4}' "$context_root/etc/passwd")"
+[[ "$ubuntu_uid" =~ ^[0-9]+$ && "$ubuntu_gid" =~ ^[0-9]+$ ]] || fail 'invalid image ubuntu account'
 guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda2 / : tar-out /lib/modules "$archive"
 restore_user_ownership "$archive"
 guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda2 / : tar-out /lib/firmware "$firmware_archive"
@@ -312,6 +221,12 @@ for index in "${!firmware_names[@]}"; do
 done
 "$memory_policy_script" --image-root "$policy_root"
 "$hostname_policy_script" --image-root "$policy_root"
+"$script_dir/configure-pico-imx7-board.sh" --image-root "$policy_root" --context-root "$context_root"
+policy_paths+=(/etc/group)
+policy_names+=(board_policy_groups)
+if [[ -L "$policy_root/etc/systemd/system/dnsmasq.service" ]]; then
+  masked_services+=(dnsmasq.service)
+fi
 "$depmod_command" -b "$stage_root" "$TARGET_RELEASE"
 tar -C "$stage_root/lib/modules" -cf "$archive" .
 tar -C "$stage_root/lib/firmware" -cf "$firmware_archive" .
@@ -322,13 +237,14 @@ guestfish_as_root --rw -a "$working_image" run : mount /dev/sda2 / : tar-in "$fi
 guestfish_as_root --rw -a "$working_image" run : mount /dev/sda2 / : tar-in "$policy_archive" /
 for policy_path in "${policy_paths[@]}"; do
   owner=0
-  [[ "$policy_path" != /home/ubuntu/* ]] || owner=1000
-  guestfish_as_root --rw -a "$working_image" run : mount /dev/sda2 / : chown "$owner" "$owner" "$policy_path"
+  group=0
+  if [[ "$policy_path" == /home/ubuntu/* ]]; then owner="$ubuntu_uid"; group="$ubuntu_gid"; fi
+  guestfish_as_root --rw -a "$working_image" run : mount /dev/sda2 / : chown "$owner" "$group" "$policy_path"
 done
 guestfish_as_root --rw -a "$working_image" run : mount /dev/sda2 / \
-  : chown 1000 1000 /home/ubuntu \
-  : chown 1000 1000 /home/ubuntu/.config \
-  : chown 1000 1000 /home/ubuntu/.config/autostart
+  : chown "$ubuntu_uid" "$ubuntu_gid" /home/ubuntu \
+  : chown "$ubuntu_uid" "$ubuntu_gid" /home/ubuntu/.config \
+  : chown "$ubuntu_uid" "$ubuntu_gid" /home/ubuntu/.config/autostart
 guestfish_as_root --rw -a "$working_image" run : mount /dev/sda1 / : upload "$boot_dtb" /imx7d-pico-pi.dtb : upload "$updated_uenv" /uEnv.txt
 for index in "${!module_names[@]}"; do
   image_module_sha="$(guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda2 / : checksum sha256 "/lib/modules/$TARGET_RELEASE/${module_destinations[$index]}")"
@@ -345,6 +261,17 @@ for index in "${!policy_paths[@]}"; do
   image_policy_sha="$(guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda2 / : checksum sha256 "$policy_path")"
   [[ "$image_policy_sha" == "$(sha256_file "$policy_root$policy_path")" ]] ||
     fail "image verification failed for policy ${policy_names[$index]}"
+  policy_stat="$(guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda2 / : statns "$policy_path")"
+  expected_uid=0
+  expected_gid=0
+  if [[ "$policy_path" == /home/ubuntu/* ]]; then expected_uid="$ubuntu_uid"; expected_gid="$ubuntu_gid"; fi
+  [[ "$(printf '%s\n' "$policy_stat" | awk '$1=="st_uid:" {print $2}')" == "$expected_uid" &&
+     "$(printf '%s\n' "$policy_stat" | awk '$1=="st_gid:" {print $2}')" == "$expected_gid" ]] ||
+    fail "image policy owner verification failed: $policy_path"
+  expected_mode=33188 # regular 0644
+  [[ ! -x "$policy_root$policy_path" ]] || expected_mode=33261 # regular 0755
+  [[ "$(printf '%s\n' "$policy_stat" | awk '$1=="st_mode:" {print $2}')" == "$expected_mode" ]] ||
+    fail "image policy mode verification failed: $policy_path"
 done
 for dependency in "${hostname_dependencies[@]}"; do
   link_path="/etc/systemd/system/$dependency/pico-imx7-hostname.service"
@@ -382,6 +309,8 @@ for index in "${!policy_paths[@]}"; do
     "${policy_names[$index]}_sha256=$(sha256_file "$policy_root${policy_paths[$index]}")"
   )
 done
+provenance_lines+=("ubuntu_uid=$ubuntu_uid" "ubuntu_gid=$ubuntu_gid")
+for service in "${masked_services[@]}"; do provenance_lines+=("service_mask=$service"); done
 provenance_lines+=("derived_image_sha256=$image_sha")
 printf '%s\n' "${provenance_lines[@]}" > "$output_image.provenance"
 printf 'created verified Pico i.MX7 Ubuntu flash image: %s\n' "$output_image"

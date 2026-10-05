@@ -46,3 +46,9 @@ The expected visible image module vermagic is
 `5.15.71 SMP preempt mod_unload modversions ARMv7 p2v8`. The literal raw
 `.modinfo` value has one final spacer after `p2v8`; a build must match that
 byte as well. Matching the release alone is insufficient.
+
+The separately tracked `imx7d-pico-pi-brcm.dts` is the source for the derived
+Broadcom/CAM-OV5645 boot DTB. It explicitly reserves the validated 192 MiB CMA
+and retains the pinned inherited 240 MHz CSI receiver clock with `csis-wclk`.
+The build record includes its SHA-256 together with all three camera patches;
+publishing modules requires those identities to match the tracked sources.
