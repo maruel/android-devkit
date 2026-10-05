@@ -59,7 +59,8 @@ module_vermagic() {
 script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir
 memory_policy_script="$script_dir/configure-pico-imx7-memory.sh"
-readonly memory_policy_script
+hostname_policy_script="$script_dir/configure-pico-imx7-hostname.sh"
+readonly memory_policy_script hostname_policy_script
 
 base_image=""
 module_build=""
@@ -118,6 +119,8 @@ boot_dtb="$module_build/boot/imx7d-pico-pi.dtb"
 require_absolute_regular_file '--module-build/boot/imx7d-pico-pi.dtb' "$boot_dtb"
 require_absolute_regular_file 'memory policy installer' "$memory_policy_script"
 [[ -x "$memory_policy_script" ]] || fail 'memory policy installer is not executable'
+require_absolute_regular_file 'hostname policy installer' "$hostname_policy_script"
+[[ -x "$hostname_policy_script" ]] || fail 'hostname policy installer is not executable'
 for required_line in \
   'format=pico-imx7-ubuntu-22.04-module-build-v1' \
   "kernel_commit=$KERNEL_COMMIT" \
@@ -181,19 +184,32 @@ for firmware_name in 'brcmfmac4339-sdio.txt' 'brcmfmac4339-sdio.fsl,pico-imx7d.t
     fail "AP6335 NVRAM checksum does not match the pinned source: $firmware_name"
 done
 
-declare -a memory_policy_paths=(
+declare -a policy_paths=(
   '/etc/sysctl.d/90-pico-imx7-memory.conf'
   '/usr/local/sbin/pico-imx7-zram-init'
   '/etc/systemd/system/zram-config.service.d/10-pico-imx7-memory.conf'
   '/etc/firefox/syspref.js'
   '/home/ubuntu/.config/autostart/blueman.desktop'
+  '/usr/local/bin/pico-imx7-plain-background'
+  '/home/ubuntu/.config/autostart/pico-imx7-plain-background.desktop'
+  '/usr/local/sbin/pico-imx7-hostname'
+  '/etc/systemd/system/pico-imx7-hostname.service'
 )
-declare -a memory_policy_names=(
-  'sysctl'
-  'zram_initializer'
-  'zram_drop_in'
-  'firefox_preferences'
-  'blueman_autostart'
+declare -a policy_names=(
+  'memory_policy_sysctl'
+  'memory_policy_zram_initializer'
+  'memory_policy_zram_drop_in'
+  'memory_policy_firefox_preferences'
+  'memory_policy_blueman_autostart'
+  'memory_policy_background_initializer'
+  'memory_policy_background_autostart'
+  'hostname_policy_initializer'
+  'hostname_policy_service'
+)
+declare -a hostname_dependencies=(
+  'sysinit.target.wants'
+  'NetworkManager.service.requires'
+  'avahi-daemon.service.requires'
 )
 declare -a masked_services=(
   'bluetooth.service'
@@ -295,18 +311,24 @@ for index in "${!firmware_names[@]}"; do
   cp --preserve=mode -- "$firmware_dir/${firmware_names[$index]}" "$destination"
 done
 "$memory_policy_script" --image-root "$policy_root"
+"$hostname_policy_script" --image-root "$policy_root"
 "$depmod_command" -b "$stage_root" "$TARGET_RELEASE"
 tar -C "$stage_root/lib/modules" -cf "$archive" .
 tar -C "$stage_root/lib/firmware" -cf "$firmware_archive" .
-tar -C "$policy_root" -cf "$policy_archive" .
+# Host staging runs as the developer; privileged policy directories must be root-owned.
+tar --owner=0 --group=0 -C "$policy_root" -cf "$policy_archive" .
 guestfish_as_root --rw -a "$working_image" run : mount /dev/sda2 / : tar-in "$archive" /lib/modules
 guestfish_as_root --rw -a "$working_image" run : mount /dev/sda2 / : tar-in "$firmware_archive" /lib/firmware
-guestfish_as_root --rw -a "$working_image" run : mount /dev/sda2 / : tar-in "$policy_archive" / \
-  : chown 0 0 /etc/sysctl.d/90-pico-imx7-memory.conf \
-  : chown 0 0 /usr/local/sbin/pico-imx7-zram-init \
-  : chown 0 0 /etc/systemd/system/zram-config.service.d/10-pico-imx7-memory.conf \
-  : chown 0 0 /etc/firefox/syspref.js \
-  : chown 1000 1000 /home/ubuntu/.config/autostart/blueman.desktop
+guestfish_as_root --rw -a "$working_image" run : mount /dev/sda2 / : tar-in "$policy_archive" /
+for policy_path in "${policy_paths[@]}"; do
+  owner=0
+  [[ "$policy_path" != /home/ubuntu/* ]] || owner=1000
+  guestfish_as_root --rw -a "$working_image" run : mount /dev/sda2 / : chown "$owner" "$owner" "$policy_path"
+done
+guestfish_as_root --rw -a "$working_image" run : mount /dev/sda2 / \
+  : chown 1000 1000 /home/ubuntu \
+  : chown 1000 1000 /home/ubuntu/.config \
+  : chown 1000 1000 /home/ubuntu/.config/autostart
 guestfish_as_root --rw -a "$working_image" run : mount /dev/sda1 / : upload "$boot_dtb" /imx7d-pico-pi.dtb : upload "$updated_uenv" /uEnv.txt
 for index in "${!module_names[@]}"; do
   image_module_sha="$(guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda2 / : checksum sha256 "/lib/modules/$TARGET_RELEASE/${module_destinations[$index]}")"
@@ -318,11 +340,18 @@ for index in "${!firmware_names[@]}"; do
   [[ "$image_firmware_sha" == "$(sha256_file "$firmware_dir/${firmware_names[$index]}")" ]] ||
     fail "image verification failed for ${firmware_names[$index]}"
 done
-for index in "${!memory_policy_paths[@]}"; do
-  policy_path="${memory_policy_paths[$index]}"
+for index in "${!policy_paths[@]}"; do
+  policy_path="${policy_paths[$index]}"
   image_policy_sha="$(guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda2 / : checksum sha256 "$policy_path")"
   [[ "$image_policy_sha" == "$(sha256_file "$policy_root$policy_path")" ]] ||
-    fail "image verification failed for memory policy ${memory_policy_names[$index]}"
+    fail "image verification failed for policy ${policy_names[$index]}"
+done
+for dependency in "${hostname_dependencies[@]}"; do
+  link_path="/etc/systemd/system/$dependency/pico-imx7-hostname.service"
+  [[ "$(guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda2 / : is-symlink "$link_path")" == true ]] ||
+    fail "hostname policy dependency is missing: $dependency"
+  [[ "$(guestfish_as_root --ro -a "$working_image" run : mount-ro /dev/sda2 / : readlink "$link_path")" == ../pico-imx7-hostname.service ]] ||
+    fail "hostname policy dependency is invalid: $dependency"
 done
 for service in "${masked_services[@]}"; do
   mask_path="/etc/systemd/system/$service"
@@ -348,9 +377,9 @@ declare -a provenance_lines=(
   "boot_dtb_sha256=$(sha256_file "$boot_dtb")"
   "kernelrelease=$TARGET_RELEASE"
 )
-for index in "${!memory_policy_paths[@]}"; do
+for index in "${!policy_paths[@]}"; do
   provenance_lines+=(
-    "memory_policy_${memory_policy_names[$index]}_sha256=$(sha256_file "$policy_root${memory_policy_paths[$index]}")"
+    "${policy_names[$index]}_sha256=$(sha256_file "$policy_root${policy_paths[$index]}")"
   )
 done
 provenance_lines+=("derived_image_sha256=$image_sha")

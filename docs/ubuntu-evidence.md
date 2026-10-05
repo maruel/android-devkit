@@ -20,6 +20,11 @@ image-creation script refuses an incorrect base hash, unvalidated module set,
 firmware, device tree, image contents, or provenance record. It also stages the
 tracked low-memory policy into every new root filesystem, verifies its files and
 service masks, and records policy-file hashes in provenance.
+The policy now includes a plain Xfce background and a hardware-derived hostname
+initializer with verified boot dependency links. The inspected base image has
+Xfdesktop 4.16 and Xfconf; the background helper uses their monitor/workspace
+properties. On-device validation and memory savings for these additions remain
+unmeasured.
 
 ## Configuration provenance
 

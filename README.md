@@ -14,8 +14,9 @@ sudo apt install --no-install-recommends curl kmod libguestfs-tools unzip xz-uti
 ./fetch-emmc-boot-assets.sh
 ```
 
-The generated image includes the validated camera stack and the low-memory
-policy from [`scripts/configure-pico-imx7-memory.sh`](scripts/configure-pico-imx7-memory.sh).
+The generated image includes the validated camera stack, a hardware-derived
+hostname for each board, and the low-memory policy (including a plain desktop
+background) from [`scripts/configure-pico-imx7-memory.sh`](scripts/configure-pico-imx7-memory.sh).
 See [BUILD.md](BUILD.md) for its exact contents and existing-target configuration.
 
 Power the board off before moving the caps. Set the jumpers to Serial Boot Loader mode, connect the USB-C

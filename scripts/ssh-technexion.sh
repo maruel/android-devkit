@@ -2,7 +2,7 @@
 set -euo pipefail
 
 readonly password='ubuntu'
-readonly target='ubuntu@technexion'
+readonly target="${SSH_TECHNEXION_TARGET:-ubuntu@technexion}"
 readonly default_timeout_seconds=120
 
 timeout_seconds="${SSH_TECHNEXION_TIMEOUT_SECONDS:-$default_timeout_seconds}"
@@ -12,6 +12,11 @@ if [[ ! "$timeout_seconds" =~ ^[1-9][0-9]*$ ]]; then
   exit 2
 fi
 readonly timeout_seconds
+
+if [[ ! "$target" =~ ^ubuntu@[A-Za-z0-9][A-Za-z0-9.-]*$ ]]; then
+  printf 'SSH_TECHNEXION_TARGET must be ubuntu@hostname or ubuntu@IPv4, got: %s\n' "$target" >&2
+  exit 2
+fi
 
 timeout_path="$(command -v timeout || true)"
 if [[ -z "$timeout_path" ]]; then

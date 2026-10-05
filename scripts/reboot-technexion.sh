@@ -26,7 +26,7 @@ fi
 sleep "$initial_wait_seconds"
 for ((attempt = 1; attempt <= retry_count; attempt++)); do
   if SSH_TECHNEXION_TIMEOUT_SECONDS=15 "$ssh_helper" true; then
-    printf 'TechNexion target is reachable after reboot.\n'
+    printf 'TechNexion target %s is reachable after reboot.\n' "${SSH_TECHNEXION_TARGET:-ubuntu@technexion}"
     exit 0
   fi
   if ((attempt < retry_count)); then

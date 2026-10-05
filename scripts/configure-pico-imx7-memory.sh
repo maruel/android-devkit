@@ -9,6 +9,8 @@ readonly zram_initializer='/usr/local/sbin/pico-imx7-zram-init'
 readonly zram_drop_in='/etc/systemd/system/zram-config.service.d/10-pico-imx7-memory.conf'
 readonly firefox_preferences='/etc/firefox/syspref.js'
 readonly blueman_autostart='/home/ubuntu/.config/autostart/blueman.desktop'
+readonly background_initializer='/usr/local/bin/pico-imx7-plain-background'
+readonly background_autostart='/home/ubuntu/.config/autostart/pico-imx7-plain-background.desktop'
 readonly -a masked_services=(
   bluetooth.service
   blueman-mechanism.service
@@ -105,21 +107,26 @@ zram_initializer_destination="$(root_path "$zram_initializer")"
 zram_drop_in_destination="$(root_path "$zram_drop_in")"
 firefox_preferences_destination="$(root_path "$firefox_preferences")"
 blueman_autostart_destination="$(root_path "$blueman_autostart")"
+background_initializer_destination="$(root_path "$background_initializer")"
+background_autostart_destination="$(root_path "$background_autostart")"
 readonly sysctl_destination zram_initializer_destination zram_drop_in_destination
 readonly firefox_preferences_destination blueman_autostart_destination
+readonly background_initializer_destination background_autostart_destination
 
 for directory in \
   "$(dirname -- "$sysctl_destination")" \
   "$(dirname -- "$zram_initializer_destination")" \
   "$(dirname -- "$zram_drop_in_destination")" \
   "$(dirname -- "$firefox_preferences_destination")" \
-  "$(dirname -- "$blueman_autostart_destination")"; do
+  "$(dirname -- "$blueman_autostart_destination")" \
+  "$(dirname -- "$background_initializer_destination")"; do
   mkdir -p -- "$directory"
   require_directory "$directory"
 done
 for destination in "$sysctl_destination" "$zram_initializer_destination" \
   "$zram_drop_in_destination" "$firefox_preferences_destination" \
-  "$blueman_autostart_destination"; do
+  "$blueman_autostart_destination" "$background_initializer_destination" \
+  "$background_autostart_destination"; do
   require_regular_or_missing_file "$destination"
 done
 
@@ -175,6 +182,53 @@ cat > "$work_dir/blueman.desktop" <<'EOF'
 Type=Application
 Hidden=true
 EOF
+cat > "$work_dir/plain-background" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Xfdesktop 4.16 creates monitor-model-specific properties at session startup.
+# Query those names instead of assuming a particular display connector/model.
+for command in awk sort xfconf-query xprop; do
+  command -v "$command" >/dev/null || { printf 'Missing executable: %s\n' "$command" >&2; exit 1; }
+done
+monitors=''
+for ((attempt = 0; attempt < 10; attempt++)); do
+  properties="$(xfconf-query --channel xfce4-desktop --list)"
+  monitors="$(printf '%s\n' "$properties" | awk '
+    /^\/backdrop\/screen[0-9]+\/monitor[^/]+\/workspace[0-9]+\/image-style$/ {
+      sub(/\/workspace[0-9]+\/image-style$/, "")
+      print
+    }' | sort -u)"
+  [[ -z "$monitors" ]] || break
+  sleep 1
+done
+[[ -n "$monitors" ]] || { printf '%s\n' 'No Xfdesktop monitor settings appeared.' >&2; exit 1; }
+workspaces="$(xprop -root _NET_NUMBER_OF_DESKTOPS)"
+workspaces="${workspaces##*= }"
+if [[ ! "$workspaces" =~ ^[1-9][0-9]*$ ]] || ((workspaces > 256)); then
+  printf '%s\n' 'Could not determine the Xfce workspace count.' >&2
+  exit 1
+fi
+while IFS= read -r monitor; do
+  for ((workspace = 0; workspace < workspaces; workspace++)); do
+    prefix="$monitor/workspace$workspace"
+    xfconf-query -c xfce4-desktop -p "$prefix/backdrop-cycle-enable" -n -t bool -s false
+    xfconf-query -c xfce4-desktop -p "$prefix/color-style" -n -t int -s 0
+    xfconf-query -c xfce4-desktop -p "$prefix/rgba1" -n \
+      -t double -s 0 -t double -s 0 -t double -s 0 -t double -s 1
+    xfconf-query -c xfce4-desktop -p "$prefix/image-style" -n -t int -s 0
+  done
+done <<< "$monitors"
+printf '%s\n' 'Configured a solid black desktop without wallpaper.'
+EOF
+cat > "$work_dir/plain-background.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Pico i.MX7 plain background
+Exec=$background_initializer
+OnlyShowIn=XFCE;
+Terminal=false
+EOF
 cat > "$work_dir/firefox-syspref.js" <<'EOF'
 // Managed by configure-pico-imx7-memory.sh.
 pref("dom.ipc.processCount", 1);
@@ -205,15 +259,17 @@ install -m 0755 -- "$work_dir/zram-init" "$zram_initializer_destination"
 install -m 0644 -- "$work_dir/zram-config.conf" "$zram_drop_in_destination"
 install -m 0644 -- "$work_dir/blueman.desktop" "$blueman_autostart_destination"
 install -m 0644 -- "$work_dir/firefox-syspref.js" "$firefox_preferences_destination"
+install -m 0755 -- "$work_dir/plain-background" "$background_initializer_destination"
+install -m 0644 -- "$work_dir/plain-background.desktop" "$background_autostart_destination"
 
 if [[ "$mode" == image ]]; then
   printf 'staged Pico i.MX7 memory policy under %s\n' "$image_root"
   exit 0
 fi
 
-chown ubuntu:ubuntu -- "$blueman_autostart_destination"
+chown ubuntu:ubuntu -- "$blueman_autostart_destination" "$background_autostart_destination"
 sysctl -w "vm.swappiness=$swappiness" >/dev/null
 systemctl daemon-reload
 systemctl mask --now "${masked_services[@]}"
-printf 'configured Firefox low-memory preferences, swappiness=%s, %s MiB %s zram, and disabled unused services; reboot to apply zram\n' \
+printf 'configured plain desktop background, Firefox low-memory preferences, swappiness=%s, %s MiB %s zram, and disabled unused services; reboot to apply zram and background\n' \
   "$swappiness" "$zram_size_mib" "$zram_algorithm"

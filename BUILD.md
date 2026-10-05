@@ -59,6 +59,8 @@ Connect to the board with:
 ```
 
 The helper uses `sshpass` to connect noninteractively to `ubuntu@technexion`.
+Select another board with `SSH_TECHNEXION_TARGET=ubuntu@<hostname-or-IP>`;
+the reboot helper uses the same variable.
 The password is `ubuntu`; it is intentionally non-sensitive and may be used or
 recorded in clear text for this inspected development target. Every invocation
 is bounded to 120 seconds (including connection setup) and kills a stuck SSH
@@ -75,7 +77,10 @@ target, versus Firefox's 85–95 MiB. The target has `netsurf-gtk` installed.
 
 Images created by `make-image.sh` already contain this fixed low-memory policy:
 `vm.swappiness=10`, a 192 MiB `lzo-rle` zram swap device, Firefox restrictions,
-and disabled unused services. The image builder verifies each policy file and
+disabled unused services, and a solid black Xfce desktop without wallpaper.
+The desktop, panel, and touchscreen applications remain available. The login
+helper applies the background to every known monitor and workspace through
+`xfconf-query`; it preserves other desktop settings. The image builder verifies each policy file and
 records its hashes in image provenance.
 
 [`scripts/configure-pico-imx7-memory.sh`](scripts/configure-pico-imx7-memory.sh)
@@ -94,6 +99,47 @@ Ubuntu target permits this noninteractive `sudo` invocation:
   < scripts/configure-pico-imx7-memory.sh
 ./scripts/reboot-technexion.sh
 ```
+
+The background applies at the next graphical login. To apply it immediately,
+run `/usr/local/bin/pico-imx7-plain-background` in the board's graphical
+terminal as `ubuntu`. Wallpaper memory savings have not been measured.
+
+## Give each board a unique hostname
+
+New images install a boot-time policy that derives
+`technexion-<4 lowercase hex digits>` from the last four digits of the `Serial`
+field in `/proc/cpuinfo` (for example, `technexion-abcd`).
+It updates `/etc/hostname`, the local hostname mapping in `/etc/hosts`, and the
+running hostname before NetworkManager and Avahi start. It runs at every boot,
+so one flash image can be used on all three boards. It requires exactly one
+nonzero, 16-digit hexadecimal CPU serial and refuses missing, malformed, or
+duplicate fields. It does not depend on the Ethernet interface.
+
+For an existing target, use its current hostname or IP address:
+
+```bash
+SSH_TECHNEXION_TARGET=ubuntu@<current-host-or-IP> \
+  ./scripts/ssh-technexion.sh sudo -n bash -s \
+  < scripts/configure-pico-imx7-hostname.sh
+```
+
+The script prints the new hostname. Reboot using the board's **IP address** for
+the readiness check, because its old hostname may stop resolving:
+
+```bash
+SSH_TECHNEXION_TARGET=ubuntu@<board-IP> ./scripts/reboot-technexion.sh
+SSH_TECHNEXION_TARGET=ubuntu@technexion-abcd ./scripts/ssh-technexion.sh
+```
+
+Use the new hostname or its `.local` name once DHCP/mDNS has updated. Factory
+names collide while multiple unconfigured boards are connected; configure them
+one at a time or address each by IP.
+
+This repository owns board images, hostnames, drivers, and desktop/memory setup.
+`../iot-maruel/technexion/` owns device roles and camera/ESPHome deployment. After
+renaming, deploy that appliance using its `DST=ubuntu@<new-hostname>` override;
+its Home Assistant discovery identity must also be distinct per board. Hostname
+changes require updating existing camera URLs and SSH/deployment destinations.
 
 ## Verify the camera on the target
 
