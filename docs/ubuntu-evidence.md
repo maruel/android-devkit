@@ -1,4 +1,4 @@
-# Ubuntu build evidence
+# Ubuntu build identities
 
 This reference defines the identities used by the supported Ubuntu 22.04
 workflow. It describes one inspected raw image; it does not generalize to other
@@ -20,15 +20,11 @@ image-creation script refuses an incorrect base hash, unvalidated module set,
 firmware, device tree, image contents, or provenance record. It also stages the
 tracked low-memory policy into every new root filesystem, verifies its files and
 service masks, and records policy-file hashes in provenance.
-The policy now includes a plain Xfce background and a hardware-derived hostname
-initializer with verified boot dependency links. The inspected base image has
-Xfdesktop 4.16 and Xfconf; the background helper uses their monitor/workspace
-properties. Actual Xfce sessions on both inspected boards verified the black background
-after reboot; wallpaper memory savings remain unmeasured. Shared board policy
-adds safe oneshot device access, Ubuntu audio/video/render membership, Cheese
-1280×720 login defaults, conditional unused dnsmasq masking, bounded persistent
-journaling, and a 30-second watchdog. Live checks require PID 1 to own the
-watchdog rather than relying on its configuration or device-node presence.
+The shared policy configures a plain Xfce desktop, hardware-derived hostname,
+root-owned device initialization, Ubuntu audio/video/render group membership,
+Cheese 1280×720 defaults, conditional unused dnsmasq masking, bounded persistent
+journaling, and a 30-second watchdog. Live verification checks PID 1 owns the
+watchdog.
 
 ## Configuration provenance
 
@@ -67,10 +63,9 @@ The supported set is recorded in
 ## Wi-Fi and boot files
 
 Runtime SDIO identity `0x02d0:0x4335` identifies the AP6335 radio as Broadcom
-BCM4339/2, despite the downloaded image's old QCA selection. The image creator
-installs the BRCM device tree (`imx7d-pico-pi.dtb`) and exact AP6335 firmware
-and NVRAM aliases. The BRCM DTB plus firmware created `wlan0` on the inspected
-target.
+BCM4339/2. The image creator installs the BRCM device tree
+(`imx7d-pico-pi.dtb`) and exact AP6335 firmware
+and NVRAM aliases, with `wifi_module=brcm` in `uEnv.txt`, to provide `wlan0`.
 
 ## Flashing boundary
 
@@ -78,4 +73,4 @@ The UUU assets are fetched separately with `./fetch-emmc-boot-assets.sh` and
 are required by the default `./flash-emmc.sh` invocation. The root
 [flash guide](../README.md) is the authoritative operator procedure:
 maintain its USB-device check, jumper positions, dry-run default, and explicit
-flash confirmation. Do not derive UUU commands from older experiments.
+flash confirmation. Use the maintained flashing scripts.

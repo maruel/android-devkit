@@ -2,6 +2,22 @@
 
 Board references: [PICO-PI-IMX7 product page](https://www.technexion.com/products/system-on-modules/evk/pico-pi-imx7/) · [PICO-IMX7 developer documentation](https://developer.technexion.com/docs/system-on-modules/pico/pico-imx7/).
 
+## Devices
+
+- `technexion-126c`
+- `technexion-1e5d`
+- `technexion-1658`
+
+Inspect the devices with the maintained updater:
+
+```bash
+./update-device.sh --target ubuntu@technexion-126c \
+  --target ubuntu@technexion-1e5d --target ubuntu@technexion-1658 --check
+```
+
+Apply a reviewed differential to an explicit target with `--apply`; add
+`--camera-test` for bounded 720p capture and stream-close acceptance.
+
 ## Flash eMMC over USB
 
 Install the dependencies, build the verified raw image, and fetch the pinned
@@ -20,16 +36,6 @@ background) from [`scripts/configure-pico-imx7-memory.sh`](scripts/configure-pic
 It also includes safe device initialization, Cheese 720p defaults, bounded
 journaling, watchdog recovery, and verified group access. See [BUILD.md](BUILD.md)
 for exact contents and existing-target configuration.
-
-Inspect both existing boards with the same maintained updater:
-
-```bash
-./update-device.sh --target ubuntu@192.168.4.120 \
-  --target ubuntu@192.168.1.153 --check
-```
-
-Apply a reviewed differential to an explicit target with `--apply`; add
-`--camera-test` for bounded 720p capture and stream-close acceptance.
 
 Power the board off before moving the caps. Set the jumpers to Serial Boot Loader mode, connect the USB-C
 OTG/power port, and confirm `lsusb -d 15a2:0076` reports the expected device.

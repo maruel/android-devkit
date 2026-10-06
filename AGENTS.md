@@ -36,18 +36,15 @@ TechNexion kernel commit `9339d9595f0d5192cf154b6fe6b98f43e8226fe8`.
   `csis-wclk`; do not change it without new primary evidence. Capture at
   `/dev/video1` is validated at 1280×720 YUYV after the tracked OV5645
   mode-sync and MX6S stream-close patches. Keep `mx6s_capture.ko` in the
-  supported prebuilt set: it prevents the observed close-time camera lockup.
-  Keep the 192 MiB CMA reservation: a static 128 MiB CMA candidate completed
-  one 720p soak but reset during a second; the 192 MiB baseline passed after
-  restoration. Cheese defaults to 2592×1944 and must be set to 1280×720 before
-  use. See `docs/camera.md`.
+  supported prebuilt set for safe stream teardown. Keep the 192 MiB CMA
+  reservation and set Cheese photo/video defaults to 1280×720.
+  See `docs/camera.md`.
 - For an on-device investigation explicitly requested by the user, permission is
   granted to install software, change device state, capture screenshots, and
   reboot the device as needed. Otherwise, ask before running `apt-get install`
   or changing external state.
-- The inspected boards are reachable as `ssh ubuntu@192.168.4.120`
-  (`technexion-126c`) and `ssh ubuntu@192.168.1.153` (`technexion-1e5d`).
-  Use explicit IP targets when working with both boards. Their password is
+- The current device names are listed in `README.md`. Use explicit SSH targets;
+  use the current IP when renaming or rebooting a board. Their password is
   `ubuntu`; the user has explicitly designated it non-sensitive and it may be
   copied or printed in clear text. After rebooting it, wait at least 40 seconds
   before attempting SSH; use `scripts/reboot-technexion.sh` for an automated
@@ -58,3 +55,5 @@ TechNexion kernel commit `9339d9595f0d5192cf154b6fe6b98f43e8226fe8`.
   Do not add test files or test harnesses unless the user
   explicitly asks. For code, follow the applicable code-quality skill. Preserve
   unrelated worktree changes.
+- Keep documentation focused on current facts, supported settings, and operator
+  steps. Keep investigation history in Git history and ignored artifacts.

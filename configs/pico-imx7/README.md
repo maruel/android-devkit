@@ -22,11 +22,6 @@ Git-free archive of TechNexion `linux-tn-imx` commit
 `9339d9595f0d5192cf154b6fe6b98f43e8226fe8`:
 
 - SHA-256: `36d36040492a62bd7593cdc03311c7d7e7f65bac1ba1e40272f26cb278365b99`
-- Source-alignment evidence:
-  `artifacts/ubuntu-22.04/source-alignment-9339d959-report.txt` in the
-  evidence workspace.
-- The same derived output was produced by candidate commit
-  `af4b4f3be385277f8d6f24e05c776d9339f0a556`.
 
 Compared with the authoritative image configuration, the derived configuration
 changes the image's QCA driver selection to the runtime-verified AP6335

@@ -1,20 +1,11 @@
 # Pico i.MX7 documentation
 
-The supported target is one inspected TechNexion PICO-PI-IMX7 running Ubuntu
-22.04 with kernel `5.15.71`. This directory records the facts and validation
-results behind the reproducible build workflow.
+This repository supports the pinned TechNexion PICO-PI-IMX7 Ubuntu 22.04 image
+with kernel `5.15.71`. Device names are listed in [README.md](../README.md#devices).
 
-## Current records
-
-- [Platform](platform.md) — supported hardware and module set.
-- [Ubuntu build evidence](ubuntu-evidence.md) — image, kernel,
-  configuration, module, firmware, and image-creation identities.
-- [Camera validation](camera.md) — corruption cause, corrected
-  drivers, target tests, and limits.
-- [Hardware-acceleration inventory](acceleration.md) — verified
-  display/GPU devices and codec limitations.
-- [Browser memory observations](browser-memory.md) — measured browser memory,
-  swap policy, and the current Chromium limitation.
-
-Git history retains superseded research and earlier workflow notes; this
-location contains only the current supported Ubuntu workflow.
+- [Platform](platform.md) — hardware, partitions, and supported modules.
+- [Ubuntu build identities](ubuntu-evidence.md) — pinned image, kernel,
+  configuration, firmware, and build requirements.
+- [Camera](camera.md) — drivers, supported mode, and application settings.
+- [Hardware acceleration](acceleration.md) — display/GPU devices and codec limits.
+- [Browser and memory policy](browser-memory.md) — browser choice and setup settings.

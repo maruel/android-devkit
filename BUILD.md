@@ -41,9 +41,9 @@ sudo apt install --no-install-recommends \
 
 This builds the vendor V2 OV5645 driver,
 `ov5645_camera_mipi_v2.ko`, with the tracked mode-synchronization patch, and
-`mx6s_capture.ko` with the stream-close patch that prevents the observed
-close-time lockup. It also rebuilds the required MIPI CSI, legacy capture, and
-AP6335 Wi-Fi modules. The builder applies all three camera patches (mode
+`mx6s_capture.ko` with the stream-close patch for safe stream teardown. It also
+rebuilds the required MIPI CSI, legacy capture, and AP6335 Wi-Fi modules. The
+builder applies all three camera patches (mode
 synchronization, safe stream close, and the MX6S 720p size limit) without fuzz
 to a Git-free archive of the pinned source, then verifies ARM ABI and literal
 vermagic for all seven modules. It does not build or use the older OV5645
@@ -78,35 +78,31 @@ record together:
   --acceptance-dir "$PWD/artifacts/target-updates/<second-run>"
 ```
 
-## Access the inspected target
+## Access a device
 
-Connect to the board with:
+The current device names are listed in [README.md](README.md). Select a device
+explicitly:
 
 ```bash
-SSH_TECHNEXION_TARGET=ubuntu@192.168.1.153 ./scripts/ssh-technexion.sh
+SSH_TECHNEXION_TARGET=ubuntu@technexion-1658 ./scripts/ssh-technexion.sh
 ```
 
-The helper uses `sshpass`; set `SSH_TECHNEXION_TARGET` explicitly when selecting
-`ubuntu@192.168.4.120` (`technexion-126c`) or `ubuntu@192.168.1.153`
-(`technexion-1e5d`). Its legacy default is `ubuntu@technexion`.
-Select another board with `SSH_TECHNEXION_TARGET=ubuntu@<hostname-or-IP>`;
-the reboot helper uses the same variable.
-The password is `ubuntu`; it is intentionally non-sensitive and may be used or
-recorded in clear text for this inspected development target. Every invocation
-is bounded to 120 seconds (including connection setup) and kills a stuck SSH
-client after a 10-second grace period. Override the limit for a known long
-command with `SSH_TECHNEXION_TIMEOUT_SECONDS=300`. After a reboot, wait at
-least 40 seconds before reconnecting; [`scripts/reboot-technexion.sh`](scripts/reboot-technexion.sh)
-performs that wait and then checks SSH readiness.
+Use its current IP address if the hostname does not resolve. The helper uses
+`sshpass` with password `ubuntu`; the password is intentionally non-sensitive.
+Each invocation is bounded to 120 seconds with a 10-second termination grace
+period. Set `SSH_TECHNEXION_TIMEOUT_SECONDS=300` for a known long command.
+After a reboot, wait at least 40 seconds before reconnecting;
+[`scripts/reboot-technexion.sh`](scripts/reboot-technexion.sh) performs that
+wait and checks SSH readiness using the same explicit target variable.
 
 ## Update existing boards
 
-Use the explicit-target updater to inspect both boards before applying changes:
+Use the explicit-target updater to inspect devices before applying changes:
 
 ```bash
-./update-device.sh --target ubuntu@192.168.4.120 \
-  --target ubuntu@192.168.1.153 --check
-./update-device.sh --target ubuntu@192.168.1.153 --apply --camera-test
+./update-device.sh --target ubuntu@technexion-126c \
+  --target ubuntu@technexion-1e5d --target ubuntu@technexion-1658 --check
+./update-device.sh --target ubuntu@technexion-1658 --apply --camera-test
 ```
 
 Inspection is the default. It verifies Ubuntu/kernel/board identity, the boot
@@ -143,11 +139,27 @@ identities, and the black background in the actual graphical session. Existing
 failed services are reported separately. Cheese photo/video defaults are set
 to 1280×720 at graphical login when its schema is available.
 
+## Wi-Fi configuration
+
+Wi-Fi uses the AP6335 Broadcom radio, the recorded BRCM DTB, and the pinned
+firmware/NVRAM files. The boot partition must contain `/imx7d-pico-pi.dtb`
+and `uEnv.txt` must select `wifi_module=brcm`. Factory QCA boot configurations
+must be converted before the existing-target updater can accept the board.
+
+`modinfo -n brcmutil` and `modinfo -n brcmfmac` must resolve to the recorded
+paths under `kernel/drivers/net/wireless/broadcom/brcm80211/`. Duplicate modules
+under `kernel/drivers/net/wireless/` can take precedence; remove those obsolete
+copies and run `sudo depmod -a 5.15.71` after installing the recorded set.
+
+Configure a secured NetworkManager Wi-Fi profile with autoconnect enabled.
+Keep network credentials on the devices, outside this repository. DHCP assigns
+the IP addresses; use the device names or the current address for SSH.
+
 ## Configure target memory
 
-The target has 487 MiB RAM. For simple web pages, use NetSurf rather than
-Firefox: it used roughly 22–26 MiB proportional-set size (PSS) on the inspected
-target, versus Firefox's 85–95 MiB. The target has `netsurf-gtk` installed.
+The boards have 487 MiB RAM. Use NetSurf for simple pages and Firefox when
+its additional browser features are needed. See
+[memory policy](docs/browser-memory.md).
 
 Images created by `make-image.sh` already contain this fixed low-memory policy:
 `vm.swappiness=10`, a 192 MiB `lzo-rle` zram swap device, Firefox restrictions,
@@ -165,34 +177,28 @@ logins, form fill, spellcheck, telemetry, new-tab services, notifications,
 and WebGL. WebRTC remains enabled for camera use. It also disables unused
 Bluetooth and Blueman, ModemManager, udisks/automount, Snap services, and
 rsyslog. It deliberately does not reset active swap, so reboot after configuring
-the board. The inspected
-Ubuntu target permits this noninteractive `sudo` invocation:
+the board. Run the helper with noninteractive `sudo`:
 
 ```bash
-SSH_TECHNEXION_TARGET=ubuntu@192.168.1.153 \
+SSH_TECHNEXION_TARGET=ubuntu@technexion-1658 \
   ./scripts/ssh-technexion.sh sudo -n bash -s \
   < scripts/configure-pico-imx7-memory.sh
-SSH_TECHNEXION_TARGET=ubuntu@192.168.1.153 ./scripts/reboot-technexion.sh
+SSH_TECHNEXION_TARGET=ubuntu@technexion-1658 ./scripts/reboot-technexion.sh
 ```
 
 The background applies at the next graphical login. To apply it immediately,
 run `/usr/local/bin/pico-imx7-plain-background` in the board's graphical
-terminal as `ubuntu`. Wallpaper memory savings have not been measured.
+terminal as `ubuntu`.
 
 ## Give each board a unique hostname
 
 New images install a boot-time policy that derives
 `technexion-<up to 4 lowercase hex digits>` from the hardware UID in
 `/sys/devices/soc0/serial_number`: strip leading zeros, then take the first four
-remaining digits (for example, `000001E5D79AC462` becomes `technexion-1e5d`).
-It updates `/etc/hostname`, the local hostname mapping in `/etc/hosts`, and the
-running hostname before NetworkManager and Avahi start. It runs at every boot,
-so one flash image can be used on both inspected boards. It requires a nonzero,
-16-digit hexadecimal SoC serial and refuses missing or malformed values.
-The inspected boards share the same `/proc/cpuinfo` serial and the last four
-digits of their SoC serials; neither is a unique identity. The policy does not
-depend on a network interface. These short names distinguish the two inspected
-boards; check for collisions when adding more boards.
+remaining digits. It updates `/etc/hostname`, `/etc/hosts`, and the running
+hostname before NetworkManager and Avahi start. It runs at every boot and
+requires a nonzero, 16-digit hexadecimal SoC UID. Check short-name collisions
+when adding boards; `/proc/cpuinfo` serials are not a unique board identity.
 
 For an existing target, use its current hostname or IP address:
 
@@ -207,7 +213,7 @@ the readiness check, because its old hostname may stop resolving:
 
 ```bash
 SSH_TECHNEXION_TARGET=ubuntu@<board-IP> ./scripts/reboot-technexion.sh
-SSH_TECHNEXION_TARGET=ubuntu@technexion-1e5d ./scripts/ssh-technexion.sh
+SSH_TECHNEXION_TARGET=ubuntu@technexion-1658 ./scripts/ssh-technexion.sh
 ```
 
 Use the new hostname or its `.local` name once DHCP/mDNS has updated. Factory
