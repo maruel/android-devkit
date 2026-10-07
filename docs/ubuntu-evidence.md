@@ -1,7 +1,7 @@
 # Ubuntu build identities
 
 This reference defines the identities used by the supported Ubuntu 22.04
-workflow. It describes one inspected raw image; it does not generalize to other
+workflow. It describes the pinned raw image; it does not generalize to other
 Pico releases or arbitrary ARM kernels.
 
 ## Base image and kernel
@@ -30,7 +30,7 @@ watchdog.
 
 The image's `/zImage` SHA-256 is
 `5dc157521db63d3ba5223fd9680f5336b0da012b392454b7fc6b5e60de7e9756`. Its
-observed LZOP stream begins at byte 17,384. Canonical Linux v5.15.71
+LZOP stream begins at byte 17,384. Canonical Linux v5.15.71
 `extract-ikconfig` recovers the authoritative 188,691-byte configuration:
 
 - [`ubuntu-22.04-5.15.71.config`](../configs/pico-imx7/ubuntu-22.04-5.15.71.config),

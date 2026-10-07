@@ -1,6 +1,6 @@
 # Supported Pico i.MX7 platform
 
-This repository supports one inspected TechNexion PICO-PI-IMX7 Ubuntu 22.04
+This repository supports the pinned TechNexion PICO-PI-IMX7 Ubuntu 22.04
 image, not a general TechNexion or i.MX7 distribution:
 
 - raw-image SHA-256:

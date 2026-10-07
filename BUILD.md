@@ -1,6 +1,6 @@
 # Build, flash, and validate Pico i.MX7 Ubuntu 22.04
 
-This repository builds and packages seven modules for the inspected TechNexion
+This repository builds and packages seven modules for the supported TechNexion
 Pico i.MX7 Ubuntu 22.04 image (kernel `5.15.71`): AP6335 BCM4339 Broadcom
 FullMAC SDIO Wi-Fi and the vendor CAM-OV5645 MIPI-camera stack. It includes a prebuilt set in
 [`prebuilt/pico-imx7/ubuntu-22.04-5.15.71`](prebuilt/pico-imx7/ubuntu-22.04-5.15.71),
@@ -80,11 +80,10 @@ record together:
 
 ## Access a device
 
-The current device names are listed in [README.md](README.md). Select a device
-explicitly:
+Select an explicit SSH destination:
 
 ```bash
-SSH_TECHNEXION_TARGET=ubuntu@technexion-1658 ./scripts/ssh-technexion.sh
+SSH_TECHNEXION_TARGET="ubuntu@<board-address>" ./scripts/ssh-technexion.sh
 ```
 
 Use its current IP address if the hostname does not resolve. The helper uses
@@ -100,9 +99,8 @@ wait and checks SSH readiness using the same explicit target variable.
 Use the explicit-target updater to inspect devices before applying changes:
 
 ```bash
-./update-device.sh --target ubuntu@technexion-126c \
-  --target ubuntu@technexion-1e5d --target ubuntu@technexion-1658 --check
-./update-device.sh --target ubuntu@technexion-1658 --apply --camera-test
+./update-device.sh --target "ubuntu@<board-address>" --check
+./update-device.sh --target "ubuntu@<board-address>" --apply --camera-test
 ```
 
 Inspection is the default. It verifies Ubuntu/kernel/board identity, the boot
@@ -180,10 +178,10 @@ rsyslog. It deliberately does not reset active swap, so reboot after configuring
 the board. Run the helper with noninteractive `sudo`:
 
 ```bash
-SSH_TECHNEXION_TARGET=ubuntu@technexion-1658 \
+SSH_TECHNEXION_TARGET="ubuntu@<board-address>" \
   ./scripts/ssh-technexion.sh sudo -n bash -s \
   < scripts/configure-pico-imx7-memory.sh
-SSH_TECHNEXION_TARGET=ubuntu@technexion-1658 ./scripts/reboot-technexion.sh
+SSH_TECHNEXION_TARGET="ubuntu@<board-address>" ./scripts/reboot-technexion.sh
 ```
 
 The background applies at the next graphical login. To apply it immediately,
@@ -203,7 +201,7 @@ when adding boards; `/proc/cpuinfo` serials are not a unique board identity.
 For an existing target, use its current hostname or IP address:
 
 ```bash
-SSH_TECHNEXION_TARGET=ubuntu@<current-host-or-IP> \
+SSH_TECHNEXION_TARGET="ubuntu@<board-address>" \
   ./scripts/ssh-technexion.sh sudo -n bash -s \
   < scripts/configure-pico-imx7-hostname.sh
 ```
@@ -212,8 +210,8 @@ The script prints the new hostname. Reboot using the board's **IP address** for
 the readiness check, because its old hostname may stop resolving:
 
 ```bash
-SSH_TECHNEXION_TARGET=ubuntu@<board-IP> ./scripts/reboot-technexion.sh
-SSH_TECHNEXION_TARGET=ubuntu@technexion-1658 ./scripts/ssh-technexion.sh
+SSH_TECHNEXION_TARGET="ubuntu@<board-address>" ./scripts/reboot-technexion.sh
+SSH_TECHNEXION_TARGET="ubuntu@<board-address>" ./scripts/ssh-technexion.sh
 ```
 
 Use the new hostname or its `.local` name once DHCP/mDNS has updated. Factory
@@ -221,18 +219,17 @@ names collide while multiple unconfigured boards are connected; configure them
 one at a time or address each by IP.
 
 This repository owns board images, hostnames, drivers, and desktop/memory setup.
-`../iot-maruel/technexion/` owns device roles and camera/ESPHome deployment. After
-renaming, deploy that appliance using its `DST=ubuntu@<new-hostname>` override;
-its Home Assistant discovery identity must also be distinct per board. Hostname
-changes require updating existing camera URLs and SSH/deployment destinations.
+Applications and camera services are deployed separately. Use a distinct
+application identity for each board, and update application URLs and SSH
+destinations after renaming.
 
 ## Verify the camera on the target
 
 The validated camera is `/dev/video1`. A bare `v4l2-ctl --set-fmt-video`
-request now configures the selected sensor mode and supports bounded 1280×720
+request configures the selected sensor mode and supports bounded 1280×720
 YUYV capture; the corrected prebuilt set includes `mx6s_capture.ko` for safe
 stream teardown. See [camera validation](docs/camera.md) for
-target evidence and [hardware acceleration](docs/acceleration.md)
+supported settings and [hardware acceleration](docs/acceleration.md)
 for the separate PxP/codec inventory.
 
 ## Build an image from rebuilt modules

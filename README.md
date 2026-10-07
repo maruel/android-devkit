@@ -2,21 +2,18 @@
 
 Board references: [PICO-PI-IMX7 product page](https://www.technexion.com/products/system-on-modules/evk/pico-pi-imx7/) · [PICO-IMX7 developer documentation](https://developer.technexion.com/docs/system-on-modules/pico/pico-imx7/).
 
-## Devices
+## Inspect or update a board
 
-- `technexion-126c`
-- `technexion-1e5d`
-- `technexion-1658`
-
-Inspect the devices with the maintained updater:
+Choose an explicit SSH destination:
 
 ```bash
-./update-device.sh --target ubuntu@technexion-126c \
-  --target ubuntu@technexion-1e5d --target ubuntu@technexion-1658 --check
+./update-device.sh --target "ubuntu@<board-address>" --check
 ```
 
-Apply a reviewed differential to an explicit target with `--apply`; add
-`--camera-test` for bounded 720p capture and stream-close acceptance.
+Apply the reported changes with `--apply`; add `--camera-test` for bounded
+720p capture and stream-close acceptance.
+The SSH helper reuses connections for 60 idle seconds, with compression
+and DSCP tagging disabled.
 
 ## Flash eMMC over USB
 

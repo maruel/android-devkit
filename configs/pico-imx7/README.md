@@ -4,7 +4,7 @@ This directory deliberately holds two different configuration snapshots. They
 must not be treated as interchangeable.
 
 `ubuntu-22.04-5.15.71.config` is the authoritative, byte-for-byte extraction
-from the inspected image's `/zImage` IKCONFIG payload:
+from the pinned image's `/zImage` IKCONFIG payload:
 
 - SHA-256: `7f2c4ccf19a61c80bd43c3e9b85d64d43d7f97bd915a1cb9fcf56c92ad593825`
 - Source compressed image SHA-256:
@@ -14,7 +14,7 @@ from the inspected image's `/zImage` IKCONFIG payload:
 - `/zImage` SHA-256:
   `5dc157521db63d3ba5223fd9680f5336b0da012b392454b7fc6b5e60de7e9756`
 - Extraction: canonical Linux v5.15.71 `scripts/extract-ikconfig` after
-  decompression of the observed LZOP stream at byte offset 17,384.
+  decompression of the LZOP stream at byte offset 17,384.
 
 `ubuntu-22.04-5.15.71-prepared.config` is a derived build input, not an image
 extraction. It was produced by `olddefconfig` from the authoritative file in a

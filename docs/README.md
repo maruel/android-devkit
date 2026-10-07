@@ -1,7 +1,7 @@
 # Pico i.MX7 documentation
 
 This repository supports the pinned TechNexion PICO-PI-IMX7 Ubuntu 22.04 image
-with kernel `5.15.71`. Device names are listed in [README.md](../README.md#devices).
+with kernel `5.15.71`. See [BUILD.md](../BUILD.md) for operator steps.
 
 - [Platform](platform.md) — hardware, partitions, and supported modules.
 - [Ubuntu build identities](ubuntu-evidence.md) — pinned image, kernel,

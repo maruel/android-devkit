@@ -37,9 +37,8 @@ cat > "$work_dir/hostname" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
-# The i.MX SoC driver exposes the hardware UID. /proc/cpuinfo's Serial is
-# identical on inspected boards, and even the hardware UID's last four digits
-# collide. Use the first four significant digits for the board's short name.
+# Derive the board's short name from the SoC UID's first significant digits.
+# Neither /proc/cpuinfo's Serial nor a UID suffix guarantees a unique name.
 # This kernel sysfs attribute is bounded to one page; require exactly one line.
 if ! mapfile -t serial_lines < /sys/devices/soc0/serial_number; then
   printf '%s\n' 'Could not read the i.MX SoC hardware serial.' >&2

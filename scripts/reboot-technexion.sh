@@ -5,8 +5,7 @@ script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_dir
 readonly ssh_helper="$script_dir/ssh-technexion.sh"
 readonly initial_wait_seconds=40
-# An inspected board's networking recovered after the former 70-second window.
-# Keep each probe at 15 seconds and allow a finite longer recovery window.
+# Bound recovery to 24 SSH probes, each with a 15-second deadline.
 readonly retry_count=24
 readonly retry_delay_seconds=5
 
@@ -28,7 +27,7 @@ fi
 sleep "$initial_wait_seconds"
 for ((attempt = 1; attempt <= retry_count; attempt++)); do
   if SSH_TECHNEXION_TIMEOUT_SECONDS=15 "$ssh_helper" true; then
-    printf 'TechNexion target %s is reachable after reboot.\n' "${SSH_TECHNEXION_TARGET:-ubuntu@technexion}"
+    printf 'TechNexion target %s is reachable after reboot.\n' "${SSH_TECHNEXION_TARGET}"
     exit 0
   fi
   if ((attempt < retry_count)); then

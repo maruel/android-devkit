@@ -2,7 +2,7 @@
 set -euo pipefail
 
 readonly password='ubuntu'
-readonly target="${SSH_TECHNEXION_TARGET:-ubuntu@technexion}"
+readonly target="${SSH_TECHNEXION_TARGET:-}"
 readonly default_timeout_seconds=120
 
 timeout_seconds="${SSH_TECHNEXION_TIMEOUT_SECONDS:-$default_timeout_seconds}"
@@ -39,8 +39,18 @@ if [[ -z "$ssh_path" ]]; then
 fi
 readonly ssh_path
 
+# A private directory prevents another user from attaching to shared sessions.
+# Tilde expansion also resolves the account home when env -i omits HOME.
+control_dir=~/.ssh/technexion-control
+install -d -m 700 "$control_dir"
+
 exec "$timeout_path" --foreground --signal=TERM --kill-after=10s "${timeout_seconds}s" \
   "$sshpass_path" -p "$password" "$ssh_path" \
+  -o ControlMaster=auto \
+  -o ControlPersist=60 \
+  -o "ControlPath=$control_dir/%C" \
+  -o Compression=no \
+  -o IPQoS=none \
   -o ConnectTimeout=10 \
   -o ConnectionAttempts=1 \
   -o ServerAliveInterval=5 \

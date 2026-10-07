@@ -1,6 +1,6 @@
 # Working rules
 
-This repository targets one inspected TechNexion Pico i.MX7 Ubuntu 22.04 raw
+This repository targets the pinned TechNexion Pico i.MX7 Ubuntu 22.04 raw
 image: kernel `5.15.71`, raw-image SHA-256
 `9fb5d12f5f50167d5529979b86fad7fcba454ea5b8e984feb43f2446c0e6f3ed`, and
 TechNexion kernel commit `9339d9595f0d5192cf154b6fe6b98f43e8226fe8`.
@@ -21,7 +21,7 @@ TechNexion kernel commit `9339d9595f0d5192cf154b6fe6b98f43e8226fe8`.
 - Keep flashing dry-run by default. A real write must retain explicit image and
   device confirmations, whole-disk validation, mounted-disk refusal, and root
   disk refusal.
-- On the inspected running eMMC target, the boot VFAT partition is
+- On supported eMMC targets, the boot VFAT partition is
   `/dev/mmcblk2p1` and the root filesystem is `/dev/mmcblk2p2`; the boot
   partition is normally unmounted. Mount only the explicit `mmcblk2p1` target
   when inspecting or replacing `/imx7d-pico-pi.dtb`. During replacement, keep a
@@ -30,7 +30,7 @@ TechNexion kernel commit `9339d9595f0d5192cf154b6fe6b98f43e8226fe8`.
   If restoration fails, preserve the only recoverable copy and report its exact
   path as unfinished recovery. Do not retain configuration backups or remove
   unrelated historical backups.
-- The inspected camera is the CAM-OV5645 at I²C `3-003c`, using
+- The supported camera is the CAM-OV5645 at I²C `3-003c`, using
   `ov5645_camera_mipi_v2.ko`, direct GPIO1_4 power-down, GPIO1_5 reset, and
   CLKO1. The baseline DTB uses a 240 MHz MIPI CSI receiver clock with
   `csis-wclk`; do not change it without new primary evidence. Capture at
@@ -43,8 +43,8 @@ TechNexion kernel commit `9339d9595f0d5192cf154b6fe6b98f43e8226fe8`.
   granted to install software, change device state, capture screenshots, and
   reboot the device as needed. Otherwise, ask before running `apt-get install`
   or changing external state.
-- The current device names are listed in `README.md`. Use explicit SSH targets;
-  use the current IP when renaming or rebooting a board. Their password is
+- Require explicit SSH targets; never default to a deployment hostname. Use
+  the current IP when renaming or rebooting a board. The image password is
   `ubuntu`; the user has explicitly designated it non-sensitive and it may be
   copied or printed in clear text. After rebooting it, wait at least 40 seconds
   before attempting SSH; use `scripts/reboot-technexion.sh` for an automated
