@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Build the supported seven-module set using the pinned source and GCC 12.
 set -euo pipefail
 
 readonly CROSS_COMPILE='arm-linux-gnueabi-'

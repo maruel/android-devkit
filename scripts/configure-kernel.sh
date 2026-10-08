@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Prepare a derived kernel build configuration from recorded source and evidence.
 set -euo pipefail
 
 script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"

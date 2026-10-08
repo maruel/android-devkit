@@ -1,3 +1,4 @@
+# Verify the file index and shell helpers without accessing devices.
 name: Phase 2 workflow checks
 
 on:
@@ -10,5 +11,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Lint shell helpers
-        run: shellcheck -s bash scripts/*.sh scripts/*.bash
+      - name: Verify repository
+        run: make verify

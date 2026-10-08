@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Publish rebuilt modules only after matching source and physical camera acceptance records.
 set -euo pipefail
 script_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 repo_dir=${script_dir%/scripts}

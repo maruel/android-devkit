@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Flash the verified raw image through explicit USB boot assets and UUU.
 set -euo pipefail
 
 readonly EXPECTED_DEVICE='imx7d-sdp-15a2:0076'

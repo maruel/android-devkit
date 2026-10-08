@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Fetch checksum-verified SPL, U-Boot and UUU assets for eMMC flashing.
 set -euo pipefail
 
 readonly PACKAGE_URL='https://download.technexion.com/development_resources/development_tools/installer/imx-mfg-uuu-tool.zip'

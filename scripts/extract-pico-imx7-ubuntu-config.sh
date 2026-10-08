@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Extract and verify the authoritative IKCONFIG from the pinned Ubuntu zImage.
 set -euo pipefail
 
 # This offset is specific to the documented TechNexion Pico i.MX7 Ubuntu 22.04

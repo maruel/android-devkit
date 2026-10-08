@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Stage supported device initialization and service settings in a selected root filesystem.
 set -euo pipefail
 
 fail() { printf 'error: %s\n' "$*" >&2; exit 1; }

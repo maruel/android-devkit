@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Create a new Ubuntu image while verifying base, modules, firmware and provenance.
 set -euo pipefail
 
 readonly BASE_IMAGE_SHA256='9fb5d12f5f50167d5529979b86fad7fcba454ea5b8e984feb43f2446c0e6f3ed'

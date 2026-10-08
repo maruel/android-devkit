@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Launch the verified eMMC flashing workflow with explicit flash confirmation.
 set -euo pipefail
 
 usage() {

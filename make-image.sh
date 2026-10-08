@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Create a new verified Ubuntu image from the pinned base and supported modules.
 set -euo pipefail
 
 usage() {

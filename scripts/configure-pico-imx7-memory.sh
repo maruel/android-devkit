@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Stage the supported zram, memory, journaling and watchdog policy.
 set -euo pipefail
 
 readonly zram_size_mib=192

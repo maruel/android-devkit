@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Build and publish modules from validated kernel configuration and source evidence.
 set -euo pipefail
 
 script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"

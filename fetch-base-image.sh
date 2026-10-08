@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Fetch and verify the pinned TechNexion Ubuntu raw image.
 set -euo pipefail
 
 readonly IMAGE_URL='https://download.technexion.com/images/pico-imx7/pi-lcd800x480/ubuntu-22.04.xz'

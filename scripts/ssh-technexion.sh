@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Run bounded SSH commands against an explicit target using reusable connections.
 set -euo pipefail
 
 readonly password='ubuntu'

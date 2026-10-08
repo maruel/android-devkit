@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Assemble a flash bundle from verified image, boot and board evidence.
 set -euo pipefail
 
 script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"

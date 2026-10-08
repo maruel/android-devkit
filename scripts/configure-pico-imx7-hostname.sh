@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Stage the hardware-derived hostname initialization policy.
 set -euo pipefail
 
 # Stage the same hardware-derived identity policy in an image or an existing board.

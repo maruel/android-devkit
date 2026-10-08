@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Launch verified SD-card flashing with explicit image and device confirmations.
 set -euo pipefail
 
 usage() {

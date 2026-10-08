@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Extract a configuration with source identity and checksum provenance.
 set -euo pipefail
 
 script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"

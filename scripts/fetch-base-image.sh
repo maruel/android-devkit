@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Fetch a workflow-configured base image with checksum and path validation.
 set -euo pipefail
 
 script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"

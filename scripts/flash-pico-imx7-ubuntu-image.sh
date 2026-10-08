@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Flash the verified image to an explicitly confirmed safe whole-disk target.
 set -euo pipefail
 
 usage() {

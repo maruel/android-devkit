@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Inspect or update explicit boards with validated artifacts and bounded camera acceptance.
 # Remote SSH shells expand fixed quoted command templates below.
 # shellcheck disable=SC2016
 set -euo pipefail

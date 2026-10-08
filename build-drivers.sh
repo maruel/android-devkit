@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Rebuild the pinned Ubuntu kernel modules into a new validated output directory.
 set -euo pipefail
 
 readonly KERNEL_COMMIT='9339d9595f0d5192cf154b6fe6b98f43e8226fe8'

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Flash a verified bundle after validating the selected whole disk and confirmations.
 set -euo pipefail
 
 script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"

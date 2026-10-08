@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Fetch checksum-verified AP6335 Wi-Fi firmware and NVRAM.
 set -euo pipefail
 
 readonly FIRMWARE_COMMIT='d83b663cdebb0151533950b938d09c5ed5c7d2e3'

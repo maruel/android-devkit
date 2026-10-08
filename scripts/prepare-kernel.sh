@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Prepare a detached pinned kernel checkout with source identity provenance.
 set -euo pipefail
 
 script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"

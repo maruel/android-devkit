@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Reboot an explicit SSH target and wait for bounded readiness checks.
 set -euo pipefail
 
 script_dir="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
