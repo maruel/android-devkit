@@ -50,7 +50,7 @@ an explicit absolute `--cross-gcc` path after verifying GCC 12 and the ARM EABI
 target; GCC 14 does not build this vendor tree. It stages a Git-free archive at the pinned commit,
 performs the required kernel build, applies the strict camera patches, and
 produces a validated seven-module set. It checks ARM ELF type and the literal
-vermagic and records the compiler, DTS and all four camera-patch identities.
+vermagic and records the compiler, DTS and all five camera-patch identities.
 Publishing a replacement requires current source attestations and two successful
 finite camera acceptances using that build. Legacy v1 records remain readable
 but cannot satisfy the publication requirements.

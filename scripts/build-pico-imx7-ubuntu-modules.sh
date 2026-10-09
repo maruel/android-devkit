@@ -47,6 +47,7 @@ mx6s_720p_limit_patch="$script_dir/../patches/pico-imx7/mx6s-csi-720p-limit.patc
 mx6s_stream_close_patch="$script_dir/../patches/pico-imx7/mx6s-csi-stream-close.patch"
 ov5645_mode_sync_patch="$script_dir/../patches/pico-imx7/ov5645-v4l2-mode-sync.patch"
 ov5645_night_exposure_patch="$script_dir/../patches/pico-imx7/ov5645-bounded-night-exposure.patch"
+ov5645_sensor_rate_patch="$script_dir/../patches/pico-imx7/ov5645-vga-five-fps.patch"
 
 while (($# > 0)); do
   case "$1" in
@@ -80,6 +81,7 @@ require_absolute_regular_file 'MX6S CSI 720p-limit patch' "$mx6s_720p_limit_patc
 require_absolute_regular_file 'MX6S CSI stream-close patch' "$mx6s_stream_close_patch"
 require_absolute_regular_file 'OV5645 V4L2 mode synchronization patch' "$ov5645_mode_sync_patch"
 require_absolute_regular_file 'OV5645 bounded night exposure patch' "$ov5645_night_exposure_patch"
+require_absolute_regular_file 'OV5645 VGA sensor rate patch' "$ov5645_sensor_rate_patch"
 [[ ! -e "$output_dir" && ! -L "$output_dir" ]] ||
   fail "refusing to overwrite existing output directory: $output_dir"
 
@@ -99,7 +101,8 @@ mx6s_720p_limit_patch_sha=$(sha256_file "$mx6s_720p_limit_patch")
 mx6s_stream_close_patch_sha=$(sha256_file "$mx6s_stream_close_patch")
 ov5645_mode_sync_patch_sha=$(sha256_file "$ov5645_mode_sync_patch")
 ov5645_night_exposure_patch_sha=$(sha256_file "$ov5645_night_exposure_patch")
-readonly compiler_sha brcm_dts_sha mx6s_720p_limit_patch_sha mx6s_stream_close_patch_sha ov5645_mode_sync_patch_sha ov5645_night_exposure_patch_sha
+ov5645_sensor_rate_patch_sha=$(sha256_file "$ov5645_sensor_rate_patch")
+readonly compiler_sha brcm_dts_sha mx6s_720p_limit_patch_sha mx6s_stream_close_patch_sha ov5645_mode_sync_patch_sha ov5645_night_exposure_patch_sha ov5645_sensor_rate_patch_sha
 
 prepared_config_sha="$(sha256_file "$prepared_config")"
 [[ "$prepared_config_sha" == "$PREPARED_CONFIG_SHA256" ]] ||
@@ -134,6 +137,9 @@ patch --batch --forward --fuzz=0 -p1 --directory="$source_stage" \
 patch --batch --forward --fuzz=0 -p1 --directory="$source_stage" \
   --input="$ov5645_night_exposure_patch" ||
   fail 'OV5645 bounded night exposure patch did not apply exactly'
+patch --batch --forward --fuzz=0 -p1 --directory="$source_stage" \
+  --input="$ov5645_sensor_rate_patch" ||
+  fail 'OV5645 VGA sensor rate patch did not apply exactly'
 install -m 0644 -- "$prepared_config" "$build_dir/.config"
 install -m 0644 -- "$brcm_dts" "$source_stage/arch/arm/boot/dts/imx7d-pico-pi-brcm.dts"
 
@@ -170,6 +176,7 @@ declare -a record_lines=(
   "mx6s_stream_close_patch_sha256=$mx6s_stream_close_patch_sha"
   "ov5645_mode_sync_patch_sha256=$ov5645_mode_sync_patch_sha"
   "ov5645_night_exposure_patch_sha256=$ov5645_night_exposure_patch_sha"
+  "ov5645_sensor_rate_patch_sha256=$ov5645_sensor_rate_patch_sha"
 )
 
 for module_path in "${module_paths[@]}"; do

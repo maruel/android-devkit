@@ -41,12 +41,13 @@ sudo apt install --no-install-recommends \
 
 This builds the vendor V2 OV5645 driver,
 `ov5645_camera_mipi_v2.ko`, with tracked mode synchronization and opt-in
-bounded night exposure (see [camera settings](docs/camera.md)), and
+bounded night exposure and VGA 5 Hz cadence (see
+[camera settings](docs/camera.md)), and
 `mx6s_capture.ko` with the stream-close patch for safe stream teardown. It also
 rebuilds the required MIPI CSI, legacy capture, and AP6335 Wi-Fi modules. The
-builder applies all four camera patches (mode
-synchronization, bounded opt-in night exposure, safe stream close, and the
-MX6S 720p size limit) without fuzz
+builder applies all five camera patches (mode synchronization, bounded opt-in
+night exposure, VGA sensor cadence, safe stream close, and the MX6S 720p size
+limit) without fuzz
 to a Git-free archive of the pinned source, then verifies ARM ABI and literal
 vermagic for all seven modules. It does not build or use the older OV5645
 camera driver.
@@ -64,7 +65,7 @@ installed GCC 12 ARM compiler or a fresh output directory, use:
 The compiler must target `arm-linux-gnueabi`; other versions and targets are
 rejected before creating build output. The build record binds all seven modules
 and the DTB to their hashes and records the compiler version/hash, prepared and
-build configuration hashes, tracked DTS hash, and all four camera patch hashes.
+build configuration hashes, tracked DTS hash, and all five camera patch hashes.
 The derived DTS explicitly reserves 192 MiB CMA and keeps the inherited 240 MHz
 CSI receiver clock and `csis-wclk`.
 

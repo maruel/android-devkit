@@ -21,6 +21,8 @@ The driver build applies these patches to the pinned kernel source:
 
 - [OV5645 mode synchronization](../patches/pico-imx7/ov5645-v4l2-mode-sync.patch)
   makes `S_FMT` select the sensor mode and initializes it at stream start.
+- [OV5645 VGA five-frame cadence](../patches/pico-imx7/ov5645-vga-five-fps.patch)
+  honors the VGA 5 Hz V4L2 request without changing pixel or MIPI clocks.
 - [OV5645 bounded night exposure](../patches/pico-imx7/ov5645-bounded-night-exposure.patch)
   permits automatic exposure extension with an explicit, read-only module option.
 - [MX6S stream teardown](../patches/pico-imx7/mx6s-csi-stream-close.patch)
@@ -64,17 +66,22 @@ are limited to 4095 lines because the documented 50 Hz ceiling is 12 bits; the
 upper debug bits are preserved. At the supported VGA timing (24 MHz input,
 56 MHz timing clock, 1896 clocks per line), 130 ms gives a 3839-line ceiling.
 The existing automatic exposure, automatic gain and 15.5× gain ceiling remain.
+The module option applies to all sensor instances. Other resolutions can reach
+the 4095-line limit before the requested exposure time. Longer exposures
+increase motion blur.
 
-The surveillance agent outputs 5 Hz, but the sensor still runs at about 30 Hz
-in bright light: the vendor VGA driver does not support the requested 5 Hz
-mode, and the agent continues with 30 Hz timing.
-Night exposure reduces the sensor frame rate only when the illumination requires
-longer integration, reaching roughly 7–8 Hz at the VGA ceiling. It also increases motion blur. This option changes the
-capture timing contract: validate fresh encoded 5 Hz delivery, bright-light
-recovery and stream reopen before enabling it for a surveillance service. Leave
-it at zero for applications requiring the original fixed sensor rate. The
-module's setting applies to every OV5645 instance using it, and other resolutions
-may reach the 4095-line cap before the requested millisecond ceiling.
+The rebuilt driver accepts a VGA 5 Hz V4L2 frame-period request and lengthens
+vertical blanking while retaining the VGA pixel and MIPI clocks. Its existing
+15, 30 and 60 Hz mode combinations remain supported. The sensor reapplies the
+requested period during stream initialization; unsupported frame-period requests
+return an error. Selecting another resolution retains the current rate when
+supported, or chooses that resolution's default rate (30 Hz, or 15 Hz for QSXGA),
+which `G_PARM` reports before an explicit `S_PARM` request. The tracked prebuilt
+driver still rejects VGA 5 Hz requests.
+The surveillance agent needs at least three capture buffers to sustain delivery
+at this sensor cadence. On-device checks showed about ten CSI interrupts per
+second, but no agent CPU saving. Encoding and conversion still run at 5 Hz;
+scene differences also limit attribution of CPU changes to sensor timing.
 
 The register contract comes from the [OmniVision OV5645 specification,
 revision 2.01](https://www.pdapply.com/upload/OV5645_CSP3_DS_2.01_.pdf), sections
@@ -82,6 +89,9 @@ revision 2.01](https://www.pdapply.com/upload/OV5645_CSP3_DS_2.01_.pdf), section
 register would overwrite debug bits.
 
 ## Short capture check
+
+Set the format and stream in the same `v4l2-ctl` invocation: MX6S resets receiver
+dimensions on each open. Repeat the format request for every new capture process.
 
 ```bash
 v4l2-ctl --device /dev/video1 \
