@@ -45,5 +45,5 @@ byte as well. Matching the release alone is insufficient.
 The separately tracked `imx7d-pico-pi-brcm.dts` is the source for the derived
 Broadcom/CAM-OV5645 boot DTB. It explicitly reserves the validated 192 MiB CMA
 and retains the pinned inherited 240 MHz CSI receiver clock with `csis-wclk`.
-The build record includes its SHA-256 together with all three camera patches;
+The build record includes its SHA-256 together with all four camera patches;
 publishing modules requires those identities to match the tracked sources.

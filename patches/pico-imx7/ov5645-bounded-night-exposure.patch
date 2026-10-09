@@ -1,0 +1,165 @@
+--- original/drivers/media/platform/mxc/capture/ov5645_mipi_v2.c
++++ modified/drivers/media/platform/mxc/capture/ov5645_mipi_v2.c
+@@ -12,6 +12,7 @@
+  */
+ 
+ #include <linux/module.h>
++#include <linux/math64.h>
+ #include <linux/init.h>
+ #include <linux/slab.h>
+ #include <linux/ctype.h>
+@@ -41,6 +42,33 @@
+ 
+ #define OV5645_CHIP_ID_HIGH_BYTE	0x300A
+ #define OV5645_CHIP_ID_LOW_BYTE		0x300B
++
++// Opt-in exposure extension; the default retains the vendor frame timing.
++static unsigned int night_max_exposure_ms;
++
++static int ov5645_set_night_max_exposure(const char *value,
++				       const struct kernel_param *param)
++{
++	unsigned int milliseconds;
++	int ret;
++
++	ret = kstrtouint(value, 0, &milliseconds);
++	if (ret)
++		return ret;
++	if (milliseconds > 130)
++		return -ERANGE;
++	*(unsigned int *)param->arg = milliseconds;
++	return 0;
++}
++
++static const struct kernel_param_ops ov5645_night_exposure_ops = {
++	.set = ov5645_set_night_max_exposure,
++	.get = param_get_uint,
++};
++module_param_cb(night_max_exposure_ms, &ov5645_night_exposure_ops,
++	       &night_max_exposure_ms, 0444);
++MODULE_PARM_DESC(night_max_exposure_ms,
++		"Automatic night exposure ceiling in ms (0 disables; maximum 130)");
+ 
+ enum ov5645_mode {
+ 	ov5645_mode_MIN = 0,
+@@ -2490,21 +2518,24 @@
+ static s32 ov5645_write_reg(struct ov5645 *sensor, u16 reg, u8 val)
+ {
+ 	u8 au8Buf[3] = {0};
++	int ret;
+ 
+ 	au8Buf[0] = reg >> 8;
+ 	au8Buf[1] = reg & 0xff;
+ 	au8Buf[2] = val;
+ 
+-	if (i2c_master_send(sensor->i2c_client, au8Buf, 3) < 0) {
++	ret = i2c_master_send(sensor->i2c_client, au8Buf, sizeof(au8Buf));
++	if (ret != sizeof(au8Buf)) {
+ 		dev_err(&sensor->i2c_client->dev,"%s:write reg error:reg=%x,val=%x, retrying once\n",
+ 			__func__, reg, val);
+ 
+ 		msleep(1);
+ 
+-		if (i2c_master_send(sensor->i2c_client, au8Buf, 3) < 0) {
++		ret = i2c_master_send(sensor->i2c_client, au8Buf, sizeof(au8Buf));
++		if (ret != sizeof(au8Buf)) {
+ 			dev_err(&sensor->i2c_client->dev,"%s:write reg error:reg=%x,val=%x, failed again, returning\n",
+ 				__func__, reg, val);
+-			return -1;
++			return ret < 0 ? ret : -EIO;
+ 		}
+ 	}
+ 
+@@ -2647,6 +2678,77 @@
+ 	ov5645_read_reg(sensor, 0x3a00, &mode);
+ 	mode &= 0xfb;
+ 	ov5645_write_reg(sensor, 0x3a00, mode);
++}
++
++static int ov5645_apply_night_exposure(struct ov5645 *sensor)
++{
++	enum {
++		BIT_MODE, SYSTEM_DIV, MULTIPLIER, PLL_DIV, SCLK_DIV,
++		HTS_HIGH, HTS_LOW, LIMIT50_HIGH, AEC_CONTROL,
++	};
++	static const u16 registers[] = {
++		0x3034, 0x3035, 0x3036, 0x3037, 0x3108,
++		0x380c, 0x380d, 0x3a14, 0x3a00,
++	};
++	static const unsigned int sclk_dividers[] = { 1, 2, 4, 8 };
++	u8 values[ARRAY_SIZE(registers)];
++	unsigned int bit_div2x, system_div, pre_div, pll_div, hts;
++	u64 sysclk, lines;
++	int i, ret;
++
++	if (!night_max_exposure_ms)
++		return 0;
++
++	for (i = 0; i < ARRAY_SIZE(registers); i++) {
++		ret = ov5645_read_reg(sensor, registers[i], &values[i]);
++		if (ret < 0)
++			return -EIO;
++	}
++
++	bit_div2x = values[BIT_MODE] & 0x0f;
++	if (bit_div2x != 8 && bit_div2x != 10)
++		return -EINVAL;
++	bit_div2x /= 2;
++	system_div = values[SYSTEM_DIV] >> 4;
++	if (!system_div)
++		system_div = 16;
++	pre_div = values[PLL_DIV] & 0x0f;
++	if (pre_div != 1 && pre_div != 2 && pre_div != 3 &&
++	    pre_div != 4 && pre_div != 6 && pre_div != 8)
++		return -EINVAL;
++	pll_div = ((values[PLL_DIV] >> 4) & 1) + 1;
++	hts = ((unsigned int)values[HTS_HIGH] << 8) | values[HTS_LOW];
++	if (!hts || !values[MULTIPLIER])
++		return -EINVAL;
++
++	// Match OV5645_get_sysclk's 10 kHz units and divider order.
++	sysclk = div_u64((u64)(sensor->mclk / 10000) * values[MULTIPLIER], pre_div);
++	sysclk = div_u64(sysclk, system_div);
++	sysclk = div_u64(sysclk, pll_div);
++	sysclk = div_u64(sysclk * 2, bit_div2x);
++	sysclk = div_u64(sysclk, sclk_dividers[values[SCLK_DIV] & 3]);
++	if (!sysclk)
++		return -EINVAL;
++	lines = div_u64(sysclk * 10 * night_max_exposure_ms, hts);
++	if (!lines)
++		return -ERANGE;
++	// OV5645 specification 2.01 table 7-7: the 50 Hz limit is 12 bits.
++	lines = min_t(u64, lines, 0x0fff);
++
++	ret = ov5645_write_reg(sensor, 0x3a02, lines >> 8);
++	if (ret)
++		return ret;
++	ret = ov5645_write_reg(sensor, 0x3a03, lines & 0xff);
++	if (ret)
++		return ret;
++	ret = ov5645_write_reg(sensor, 0x3a14,
++				   (values[LIMIT50_HIGH] & 0xf0) | (lines >> 8));
++	if (ret)
++		return ret;
++	ret = ov5645_write_reg(sensor, 0x3a15, lines & 0xff);
++	if (ret)
++		return ret;
++	return ov5645_write_reg(sensor, 0x3a00, values[AEC_CONTROL] | BIT(2));
+ }
+ 
+ static int OV5645_get_HTS(struct ov5645 *sensor)
+@@ -3157,6 +3259,14 @@
+ 	OV5645_set_AE_target(sensor, AE_Target);
+ 	OV5645_get_light_freq(sensor);
+ 	OV5645_set_bandingfilter(sensor);
++	if (mode != ov5645_mode_INIT) {
++		retval = ov5645_apply_night_exposure(sensor);
++		if (retval < 0) {
++			dev_err(&sensor->i2c_client->dev,
++				"night exposure configuration failed: %d\n", retval);
++			goto err;
++		}
++	}
+ 	ov5645_set_virtual_channel(sensor, sensor->csi);
+ 
+ 	/* add delay to wait for sensor stable */

@@ -75,7 +75,7 @@ validate_pico_modules() {
         [[ -n $current && -n $pending && $value == "$TARGET_VERMAGIC" ]] || fail 'invalid recorded module vermagic association'
         recorded[$current]=$pending; current=''; pending=''
         ;;
-      format|kernel_commit|prepared_config_sha256|build_config_sha256|kernelrelease|expected_vermagic|cross_compile|compiler|boot_dtb|boot_dtb_sha256|compiler_version|compiler_target|compiler_sha256|brcm_dts_sha256|mx6s_720p_limit_patch_sha256|mx6s_stream_close_patch_sha256|ov5645_mode_sync_patch_sha256)
+      format|kernel_commit|prepared_config_sha256|build_config_sha256|kernelrelease|expected_vermagic|cross_compile|compiler|boot_dtb|boot_dtb_sha256|compiler_version|compiler_target|compiler_sha256|brcm_dts_sha256|mx6s_720p_limit_patch_sha256|mx6s_stream_close_patch_sha256|ov5645_mode_sync_patch_sha256|ov5645_night_exposure_patch_sha256)
         [[ -z $current && ! -v fields[$key] && -n $value ]] || fail "duplicate or misplaced record field: $key"
         fields[$key]=$value
         ;;
@@ -96,11 +96,17 @@ validate_pico_modules() {
   # compiler/source/patch identity block, never a partial collection.
   if [[ -v fields[compiler_version] || -v fields[compiler_target] || -v fields[compiler_sha256] ||
         -v fields[brcm_dts_sha256] || -v fields[mx6s_720p_limit_patch_sha256] ||
-        -v fields[mx6s_stream_close_patch_sha256] || -v fields[ov5645_mode_sync_patch_sha256] ]]; then
+        -v fields[mx6s_stream_close_patch_sha256] || -v fields[ov5645_mode_sync_patch_sha256] ||
+        -v fields[ov5645_night_exposure_patch_sha256] ]]; then
     [[ ${fields[compiler_version]:-} =~ ^12\.[0-9]+(\.[0-9]+)?$ && ${fields[compiler_target]:-} == arm-linux-gnueabi ]] || fail 'invalid compiler attestation'
     for header in compiler_sha256 brcm_dts_sha256 mx6s_720p_limit_patch_sha256 mx6s_stream_close_patch_sha256 ov5645_mode_sync_patch_sha256; do
       [[ ${fields[$header]:-} =~ ^[a-f0-9]{64}$ ]] || fail "missing or invalid source attestation: $header"
     done
+  fi
+  # Older attested records remain readable; publication requires the current
+  # night-exposure identity through require_pico_source_attestation below.
+  if [[ -v fields[ov5645_night_exposure_patch_sha256] ]]; then
+    [[ ${fields[ov5645_night_exposure_patch_sha256]} =~ ^[a-f0-9]{64}$ ]] || fail 'invalid night exposure patch attestation'
   fi
   module_hashes=()
   for index in "${!module_paths[@]}"; do
@@ -139,5 +145,6 @@ brcm_dts_sha256	configs/pico-imx7/imx7d-pico-pi-brcm.dts
 mx6s_720p_limit_patch_sha256	patches/pico-imx7/mx6s-csi-720p-limit.patch
 mx6s_stream_close_patch_sha256	patches/pico-imx7/mx6s-csi-stream-close.patch
 ov5645_mode_sync_patch_sha256	patches/pico-imx7/ov5645-v4l2-mode-sync.patch
+ov5645_night_exposure_patch_sha256	patches/pico-imx7/ov5645-bounded-night-exposure.patch
 SOURCES
 }

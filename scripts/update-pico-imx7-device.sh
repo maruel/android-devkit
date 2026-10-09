@@ -67,6 +67,12 @@ source "$script_dir/pico-imx7-artifacts.bash"
 source "$script_dir/pico-imx7-policy-catalog.bash"
 [[ -d $firmware_dir ]] || fail "firmware directory missing: $firmware_dir; run ./fetch-ap6335-firmware.sh first"
 validate_pico_artifacts "$module_build" "$firmware_dir"
+selected_night_exposure=false
+if LC_ALL=C readelf -p .modinfo -- "$modules_dir/ov5645_camera_mipi_v2.ko" |
+  awk '/parm=night_max_exposure_ms:/ {found=1} END {exit !found}'; then
+  selected_night_exposure=true
+fi
+readonly selected_night_exposure
 work_dir=$(mktemp -d)
 cleanup() { rm -rf -- "$work_dir"; }
 trap cleanup EXIT
@@ -91,7 +97,8 @@ make_request() {
   cat "$work_dir/prefix" > "$request"
   # Only verified fixed-format UID and hashes are interpolated. Manifest is
   # generated locally from fixed inventories and inserted as literal data.
-  printf 'expected_uid=%q\nexpected_dtb=%q\nexpected_record=%q\n' "$uid" "$(artifact_sha256 "$boot_dtb")" "$(artifact_sha256 "$module_record")" >> "$request"
+  printf 'expected_uid=%q\nexpected_dtb=%q\nexpected_record=%q\nselected_night_exposure=%s\n' \
+    "$uid" "$(artifact_sha256 "$boot_dtb")" "$(artifact_sha256 "$module_record")" "$selected_night_exposure" >> "$request"
   printf "plan_text=\$(cat <<'PICO_MANIFEST'\n" >> "$request"
   [[ -z $manifest ]] || cat "$manifest" >> "$request"
   printf '\nPICO_MANIFEST\n)\n' >> "$request"

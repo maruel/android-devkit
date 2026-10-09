@@ -105,10 +105,38 @@ mark_pending() {
   pending_marked=true
 }
 board_preflight() {
-  local model identity uid release root_source wifi
+  local model identity uid release root_source wifi night_option_present
   for executable in awk bash cat cmp cut date depmod dpkg-query find findmnt getent grep hostname install journalctl ln modinfo mount mv pgrep readlink rm runuser sed sha256sum sort stat sync sysctl systemctl tail tar timeout tr umount usermod wc; do
     command -v "$executable" >/dev/null || fail "missing target executable: $executable"
   done
+  [[ $selected_night_exposure == true || $selected_night_exposure == false ]] || fail 'invalid selected camera module capability'
+  if [[ $selected_night_exposure == false && -e /etc/modprobe.d/ov5645-night.conf ]]; then
+    night_option_present=$(awk '
+      {
+        sub(/#.*/, "")
+        continued=sub(/\\[[:space:]]*$/, "")
+        logical=logical $0
+        if (continued) next
+        sub(/^[[:space:]]+/, "", logical)
+        count=split(logical, words, /[[:space:]]+/)
+        gsub(/-/, "_", words[2])
+        if (words[1] == "options" && words[2] == "ov5645_camera_mipi_v2") {
+          for (i=3; i<=count; i++) {
+            option_name=words[i]
+            sub(/^"/, "", option_name)
+            sub(/=.*/, "", option_name)
+            gsub(/-/, "_", option_name)
+            if (option_name == "night_max_exposure_ms" && index(words[i], "=")) found=1
+          }
+        }
+        logical=""
+      }
+      END {print found ? "true" : "false"}
+    ' /etc/modprobe.d/ov5645-night.conf) || fail 'cannot inspect OV5645 night configuration'
+    if [[ $night_option_present == true ]]; then
+      fail 'selected OV5645 module lacks night_max_exposure_ms; rebuild/install a compatible module or remove /etc/modprobe.d/ov5645-night.conf opt-in before using prebuilt modules'
+    fi
+  fi
   model=$(tr -d '\0' < /proc/device-tree/model)
   [[ $model == "$BOARD_MODEL" ]] || fail "unsupported board model: $model"
   [[ $(uname -r) == "$TARGET_RELEASE" ]] || fail 'unsupported running kernel'
